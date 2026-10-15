@@ -16,6 +16,11 @@ provenance:
       at: 2026-10-15T03:17:45Z
       mode: "update"
       note: "Best-practices review: reversible start/stop lifecycle, GPC gate, sessionStorage queue mirror, React provider redesign, reconciled cross-plan inconsistencies"
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-10-15T03:45:08Z
+      mode: "implement"
+      note: "Implement workspace foundation and continue child plans in dependency order"
 ---
 
 # Kansoku Browser SDKs: kansoku-js and kansoku-react
@@ -210,7 +215,7 @@ OpenAPI document and catalog; later refreshes are an explicit, reviewed step.
 
 | # | Title | Path | Hard Deps | Soft Deps | Status |
 |---|-------|------|-----------|-----------|--------|
-| 1 | Workspace foundation, vendored Kansoku contracts, and generated wire types | docs/plans/1-workspace-foundation-vendored-kansoku-contracts-and-generated-wire-types.md | None | None | Not Started |
+| 1 | Workspace foundation, vendored Kansoku contracts, and generated wire types | docs/plans/1-workspace-foundation-vendored-kansoku-contracts-and-generated-wire-types.md | None | None | In Progress |
 | 2 | kansoku-js core: event envelope, identity and session state, batched delivery, and exit flush | docs/plans/2-kansoku-js-core-event-envelope-identity-and-session-state-batched-delivery-and-exit-flush.md | EP-1 | None | Not Started |
 | 3 | kansoku-js browser capture: page views, navigation, attribution, identity helpers, and experiments | docs/plans/3-kansoku-js-browser-capture-page-views-navigation-attribution-identity-helpers-and-experiments.md | EP-2 | None | Not Started |
 | 4 | kansoku-react: provider, hooks, and router-agnostic page tracking | docs/plans/4-kansoku-react-provider-hooks-and-router-agnostic-page-tracking.md | EP-3 | None | Not Started |

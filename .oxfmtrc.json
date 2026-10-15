@@ -12,5 +12,18 @@
   "endOfLine": "lf",
   "insertFinalNewline": true,
   "sortPackageJson": true,
-  "ignorePatterns": ["node_modules", "dist", "build", "result", ".direnv", ".seihou"]
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "build",
+    "result",
+    ".direnv",
+    ".seihou",
+    "packages/*/src/generated",
+    "agents",
+    "contracts",
+    "docs/plans",
+    "docs/masterplans",
+    "nix/tooling-sources.json"
+  ]
 }

@@ -17,6 +17,11 @@ provenance:
       at: 2026-10-15T03:17:45Z
       mode: "update"
       note: "Unify React peer range, add optional @types/react peer, prove sessionStorage in the DOM harness"
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-10-15T03:45:08Z
+      mode: "implement"
+      note: "Implement workspace, pinned generated contracts, test harness, CI and ADR bundle"
 ---
 
 # Workspace foundation, vendored Kansoku contracts, and generated wire types
@@ -49,17 +54,17 @@ sends an analytics event; it builds the floor every other plan in
 
 ## Progress
 
-- [ ] Milestone 1 — Bun workspace with two package scaffolds. `just build` produces
+- [x] (2026-10-14; build, Node import/require, publint and checks passed) Milestone 1 — Bun workspace with two package scaffolds. `just build` produces
   `packages/kansoku-js/dist/{index.js,index.js.map,index.d.ts}` (plus per-module `.d.ts`
   files) and the same for `kansoku-react`; Node can `import` the ESM entry of `kansoku-js` and,
   through `require(esm)` on the dev shell's Node 22, also `require()` it, reading
   `version === "0.1.0"` both ways; `just check` (typecheck, lint, format) passes.
-- [ ] Milestone 2 — Vendored contracts and generated wire types. `contracts/openapi.json`,
+- [x] (2026-10-14; generated types and contract tests passed) Milestone 2 — Vendored contracts and generated wire types. `contracts/openapi.json`,
   `contracts/events.json`, and `contracts/KANSOKU_COMMIT` exist and match server commit
   `d61cf0c4b53bc6f9128f8589cd287c107f394427`; `just generate-schema` writes
   `packages/kansoku-js/src/generated/schema.ts`; `just check-contracts` exits 0 on a clean tree
   and non-zero after `contracts/openapi.json` is edited; the contract tests pass.
-- [ ] Milestone 3 — DOM test harness. `just test` runs `bun test` with the happy-dom preload
+- [x] (2026-10-14; 8 DOM tests and 1 no-DOM test passed) Milestone 3 — DOM test harness. `just test` runs `bun test` with the happy-dom preload
   and then the same suite paths with `KANSOKU_TEST_NO_DOM=1`, under which registration is
   skipped; the sample DOM test, the fetch-mock self-test, and the no-DOM sanity test pass;
   `test/helpers/fetch-mock.ts` exposes `createFetchMock()` returning `{ fetch, requests,
@@ -72,7 +77,7 @@ sends an analytics event; it builds the floor every other plan in
 
 ## Surprises & Discoveries
 
-(None yet.)
+The scaffold already contained formatter differences in managed skill/tooling files and plan prose. The formatter excludes managed agents, plan documents (which require intentional spacing), and byte-for-byte vendored contracts; it still checks all handwritten implementation and ADR files. Bun add initially rewrote existing React peer declarations; the agreed peer ranges were restored explicitly.
 
 
 ## Decision Log

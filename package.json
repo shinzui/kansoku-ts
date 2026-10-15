@@ -1,18 +1,26 @@
 {
   "name": "kansoku-ts",
   "version": "0.1.0",
-  "description": "React and JS client for kansoku",
-  "type": "module",
-  "module": "src/index.ts",
   "private": true,
+  "description": "React and JS client for kansoku",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "just typecheck",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt --write .",
-    "format:check": "oxfmt --check ."
+    "format:check": "oxfmt --check .",
+    "build": "just build",
+    "test": "just test"
   },
   "devDependencies": {
-    "@types/bun": "1.4.2"
+    "@happy-dom/global-registrator": "^20.14.5",
+    "@types/bun": "1.4.2",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9"
   }
 }

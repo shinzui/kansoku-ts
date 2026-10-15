@@ -42,5 +42,14 @@ in  Schema.Project::{
         , dependencies = [ Schema.Dependency.ByName "kansoku-js" ]
         }
       ]
+    , okfBundles =
+      [ Schema.OkfBundle::{
+        , name = "adrs"
+        , path = "docs/adr"
+        , okfVersion = "0.2"
+        , profile = Some "docs/adr/profile.dhall"
+        , description = Some "Durable architecture decisions for the Kansoku browser SDKs"
+        }
+      ]
     , dependencies = [ "shinzui/kansoku", "openapi-ts/openapi-typescript" ]
     }

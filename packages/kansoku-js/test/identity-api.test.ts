@@ -8,7 +8,7 @@ test("identify, alias and group match the server helper shapes", async () => {
   client.identify("user", { plan: "pro" })
   client.alias("old-anon", "linked-user")
   client.group("org", { tier: "team" })
-  client.setIdentifiers({ device: "dev-1", email_sha256: "ab12" })
+  client.setIdentifiers({ device: "dev-1", email_sha256: "ab12", email_hmac: "v1:opaque" })
   client.track("later")
   await client.flush()
   expect(events()[0]).toMatchObject({
@@ -33,7 +33,7 @@ test("identify, alias and group match the server helper shapes", async () => {
   expect(events()[3]).toMatchObject({
     userId: "user",
     organizationId: "org",
-    identifiers: { device: "dev-1", email_sha256: "ab12" },
+    identifiers: { device: "dev-1", email_sha256: "ab12", email_hmac: "v1:opaque" },
   })
 })
 test("invalid identifiers do not replace stored signals and reset preserves queued attribution", async () => {

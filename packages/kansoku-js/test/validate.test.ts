@@ -34,6 +34,7 @@ test("enforces the closed identity vocabulary and printable non-space ASCII", ()
       device: "a".repeat(256),
       fingerprint: "!~",
       email_sha256: "123",
+      email_hmac: "v1:opaque",
     }),
   ).toEqual([])
   for (const value of [

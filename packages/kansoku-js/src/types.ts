@@ -1,7 +1,8 @@
 import type { AnalyticsEvent, JsonObject } from "./contract/wire.js"
+import type { IDENTIFIER_KINDS } from "./generated/identifier-kinds.js"
 
 export type { AnalyticsEvent, JsonObject, JsonValue } from "./contract/wire.js"
-export type IdentifierKind = "cookie" | "device" | "fingerprint" | "email_sha256"
+export type IdentifierKind = (typeof IDENTIFIER_KINDS)[number]
 export interface StorageAdapter {
   get(key: string): string | null
   set(key: string, value: string): void

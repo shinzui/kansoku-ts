@@ -2,12 +2,13 @@ import { expect, test } from "bun:test"
 
 import catalog from "../../../contracts/events.json"
 import api from "../../../contracts/openapi.json"
-import { BUILT_IN_SCHEMA_VERSIONS } from "../src/contract/events.js"
+import { BUILT_IN_SCHEMA_VERSIONS, IDENTIFIER_KINDS } from "../src/contract/events.js"
 import type {
   AnalyticsEvent,
   BatchAck,
-  ErrorEnvelopeWire,
+  ProblemDetails,
   RejectedEvent,
+  SchemaCatalog,
 } from "../src/contract/wire.js"
 import { buildEvent } from "../src/envelope.js"
 
@@ -19,7 +20,8 @@ const requiredKeys: Equal<
   "eventId" | "eventName" | "source" | "occurredAt" | "receivedAt" | "properties" | "context"
 > = true
 const ackType: Equal<BatchAck, { accepted: number; rejected: RejectedEvent[] }> = true
-const retryable: Equal<ErrorEnvelopeWire["retryable"], boolean> = true
+const governedCatalog: SchemaCatalog = catalog
+const retryable: Equal<ProblemDetails["retryable"], boolean> = true
 
 test("wire types match the required event and response shapes", () => {
   expect([requiredKeys, ackType, retryable]).toEqual([true, true, true])
@@ -36,7 +38,7 @@ test("wire types match the required event and response shapes", () => {
     "AnalyticsEvent",
     "BatchAck",
     "RejectedEvent",
-    "ErrorEnvelopeWire",
+    "ProblemDetails",
     "SchemaCatalog",
     "EventVersions",
     "VersionedEventSchema",
@@ -48,12 +50,16 @@ test("wire types match the required event and response shapes", () => {
   }
 })
 test("catalog and source pin carry the governed contract", async () => {
-  expect(catalog.catalogVersion).toBe(1)
+  expect(catalog.catalogVersion).toBe(3)
+  expect([...IDENTIFIER_KINDS] as string[]).toEqual(catalog.identifierKinds)
   expect(catalog.service).toBe("kansoku")
   expect(Object.keys(catalog.events)).toEqual([
+    "alias",
     "experiment_viewed",
     "feature_used",
+    "group",
     "identify",
+    "page_leave",
     "page_view",
     "payment_completed",
     "session_start",
@@ -84,8 +90,8 @@ test("built-in pinned events satisfy catalog requirements", () => {
       name,
       samples[name],
     )
-    const schema = catalog.events[name].versions.find(
-      (schema) => schema.version === event.schemaVersion,
+    const schema = governedCatalog.events[name]!.versions.find(
+      (candidate) => candidate.version === event.schemaVersion,
     )!
     expect(schema).toBeDefined()
     for (const property of schema.properties) {

@@ -36,7 +36,7 @@ data: use `beforeSend` to redact them.
 `identify(userId, traits?)` persists the user ID and sends traits as event properties.
 `alias(previousId, newId, properties?)` links identities for one event and leaves the stored
 user unchanged. `group(organizationId, properties?)` persists the organisation for later
-events. `setIdentifiers({ device, fingerprint, email_sha256, cookie })` replaces optional
+events. `setIdentifiers({ device, fingerprint, email_hmac, email_sha256, cookie })` replaces optional
 identity signals; provide only the keys needed. Values must contain 1–256 printable,
 non-space ASCII characters. The anonymous ID already supplies the implicit cookie signal.
 
@@ -87,7 +87,7 @@ Identity, session and opt-out state use localStorage by default. Choose `storage
 `"memory"` or a custom `{ get, set, remove }` adapter. Keys use `storageKeyPrefix` (`kansoku`):
 `.anonymous_id`, `.user_id`, `.organization_id`, `.identifiers`, `.session`, `.opt_out`.
 The `.queue` mirror always uses per-tab sessionStorage (`persistQueue: false` disables it).
-Blocked browser storage falls back to memory. No fingerprint is generated.
+Blocked browser storage falls back to memory. No fingerprint is generated. Keyed email identifiers are opaque backend-produced values; never expose the HMAC pepper to browser code. The normalization and rotation contract is owned by `mori://shinzui/kansoku` (`docs/guides/send-events.md`; artifact-level URI pending).
 
 On page exit, keepalive fetch attempts bodies up to 60 KiB. Browsers also limit aggregate
 in-flight keepalive bytes, so exit delivery is best effort. Unanswered events remain in

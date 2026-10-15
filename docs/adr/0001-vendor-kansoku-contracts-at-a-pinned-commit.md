@@ -5,7 +5,7 @@ description: Generate SDK wire types from committed server contracts and refresh
 docId: ADR-1
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-15T03:45:00Z
+timestamp: 2026-10-15T19:58:00Z
 generated:
   by: process:codex
   at: 2026-10-15T03:45:00Z
@@ -29,7 +29,10 @@ code imports wire types only through `src/contract/wire.ts`.
 
 Refresh with `scripts/sync-contracts.ts`, which reads committed objects with `git show`,
 then regenerate types and review the entire change. Builds and tests read only vendored
-files. The live conformance suite compares `GET /v1/schemas` with the vendored catalog.
+files. The catalog's `identifierKinds` also generates the committed
+`src/generated/identifier-kinds.ts` vocabulary; runtime validation and the public
+`IdentifierKind` union consume that single generated list. A new identifier kind therefore
+requires an explicit server contract refresh. The live conformance suite compares `GET /v1/schemas` with the vendored catalog.
 
 ## Alternatives considered
 

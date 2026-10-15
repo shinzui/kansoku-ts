@@ -53,6 +53,9 @@
             "minimum": -9223372036854775808,
             "type": "integer"
           },
+          "sentAt": {
+            "$ref": "#/components/schemas/UTCTime"
+          },
           "sessionId": {
             "$ref": "#/components/schemas/SessionId"
           },
@@ -135,6 +138,16 @@
           "description": {
             "type": "string"
           },
+          "minLength": {
+            "maximum": 9223372036854775807,
+            "minimum": -9223372036854775808,
+            "type": "integer"
+          },
+          "minimum": {
+            "maximum": 9223372036854775807,
+            "minimum": -9223372036854775808,
+            "type": "integer"
+          },
           "name": {
             "type": "string"
           },
@@ -157,25 +170,6 @@
       },
       "CorrelationId": {
         "type": "string"
-      },
-      "ErrorEnvelopeWire": {
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "retryable": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "code",
-          "message",
-          "retryable"
-        ],
-        "type": "object"
       },
       "EventId": {
         "type": "string"
@@ -249,6 +243,7 @@
         "type": "object"
       },
       "MetricResult": {
+        "description": "A complete aggregate answer with at most 10000 points. Larger answers return the permanent metric_result_too_large problem; no partial result or cursor pages are returned.",
         "properties": {
           "metric": {
             "type": "string"
@@ -257,6 +252,7 @@
             "items": {
               "$ref": "#/components/schemas/MetricPoint"
             },
+            "maxItems": 10000,
             "type": "array"
           }
         },
@@ -273,6 +269,39 @@
       },
       "OrganizationId": {
         "type": "string"
+      },
+      "ProblemDetails": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "status": {
+            "maximum": 9223372036854775807,
+            "minimum": -9223372036854775808,
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "code",
+          "retryable"
+        ],
+        "type": "object"
       },
       "RejectedEvent": {
         "properties": {
@@ -310,6 +339,12 @@
             },
             "type": "object"
           },
+          "identifierKinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "service": {
             "type": "string"
           }
@@ -317,6 +352,7 @@
         "required": [
           "catalogVersion",
           "service",
+          "identifierKinds",
           "events"
         ],
         "type": "object"
@@ -383,7 +419,7 @@
   "paths": {
     "/metrics/acquisition": {
       "get": {
-        "description": "The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
         "operationId": "getMetricsAcquisition",
         "parameters": [
           {
@@ -445,69 +481,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -524,7 +614,7 @@
     },
     "/metrics/conversion": {
       "get": {
-        "description": "The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
         "operationId": "getMetricsConversion",
         "parameters": [
           {
@@ -586,69 +676,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -665,7 +809,7 @@
     },
     "/metrics/custom": {
       "get": {
-        "description": "The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
         "operationId": "getMetricsCustom",
         "parameters": [
           {
@@ -727,69 +871,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -806,7 +1004,7 @@
     },
     "/metrics/events": {
       "get": {
-        "description": "The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
         "operationId": "getMetricsEvents",
         "parameters": [
           {
@@ -868,69 +1066,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -947,7 +1199,7 @@
     },
     "/metrics/experiments": {
       "get": {
-        "description": "Unique users exposed per experiment and variant, from the experiment_exposures rollup. Counts raw identities (user_id, else anonymous_id) with a uniqCombined sketch (~0.8% error at scale; exact for small sets); identity-stitched exact numbers are served by the conversion and funnel endpoints. timeGrain: day, week, or month (hour is rejected; the rollup is daily); omitted = one bucket for the whole range. Re-exposures never double-count.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. Unique users exposed per experiment and variant, from the experiment_exposures rollup. Counts raw identities (user_id, else anonymous_id) with a uniqCombined sketch (~0.8% error at scale; exact for small sets); identity-stitched exact numbers are served by the conversion and funnel endpoints. timeGrain: day, week, or month (hour is rejected; the rollup is daily); omitted = one bucket for the whole range. Re-exposures never double-count.",
         "operationId": "getMetricsExperiments",
         "parameters": [
           {
@@ -1009,69 +1261,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `experiment` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -1088,7 +1394,7 @@
     },
     "/metrics/experiments/conversion": {
       "get": {
-        "description": "Per-variant conversion for one experiment: exposed unique users, users with a conversion event at or after their first exposure (earlier conversions do not count), and the rate. Users exposed to multiple variants count in each. Counts and rates only; no significance testing.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. Per-variant conversion for one experiment: exposed unique users, users with a conversion event at or after their first exposure (earlier conversions do not count), and the rate. Users exposed to multiple variants count in each. Counts and rates only; no significance testing.",
         "operationId": "getMetricsExperimentsConversion",
         "parameters": [
           {
@@ -1144,69 +1450,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `to` or `from` or `event` or `experiment`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -1223,7 +1583,7 @@
     },
     "/metrics/experiments/funnel": {
       "get": {
-        "description": "Ordered funnel per variant of one experiment. Users counted at step N performed steps 1..N in order, all at or after their first exposure to the experiment, within `window` seconds of the chain's first step (default: the full from/to range, capped at 90 days). Steps before first exposure do not count.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. Ordered funnel per variant of one experiment. At most 20 non-empty ordered steps are supported, including repeated names. Users counted at step N performed steps 1..N in order, all at or after their first exposure to the experiment, within `window` seconds of the chain's first step (default: the full from/to range, capped at 90 days). Steps before first exposure do not count.",
         "operationId": "getMetricsExperimentsFunnel",
         "parameters": [
           {
@@ -1289,69 +1649,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `window` or `to` or `from` or `steps` or `experiment`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -1368,7 +1782,7 @@
     },
     "/metrics/feature-adoption": {
       "get": {
-        "description": "The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
         "operationId": "getMetricsFeatureAdoption",
         "parameters": [
           {
@@ -1430,69 +1844,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -1509,7 +1977,7 @@
     },
     "/metrics/funnel": {
       "get": {
-        "description": "Users counted at step N performed steps 1..N in order within `window` seconds of the chain's first step. Default window: the full from/to range, capped at 90 days (7776000 s).",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. At most 20 non-empty ordered steps are supported, including repeated names. Users counted at step N performed steps 1..N in order within `window` seconds of the chain's first step. Default window: the full from/to range, capped at 90 days (7776000 s).",
         "operationId": "getMetricsFunnel",
         "parameters": [
           {
@@ -1567,69 +2035,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `window` or `steps` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -1646,7 +2168,7 @@
     },
     "/metrics/organizations": {
       "get": {
-        "description": "The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
         "operationId": "getMetricsOrganizations",
         "parameters": [
           {
@@ -1708,69 +2230,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -1787,7 +2363,7 @@
     },
     "/metrics/page-views": {
       "get": {
-        "description": "The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
         "operationId": "getMetricsPageViews",
         "parameters": [
           {
@@ -1849,69 +2425,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -1928,7 +2558,7 @@
     },
     "/metrics/retention": {
       "get": {
-        "description": "Retention over new-in-window cohorts: a user's cohort day is their first activity within the requested from/to window (users active before the window re-appear as new). Offset 0 (the cohort day itself) is always included.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. At most 32 distinct retention offsets in 1..365 are supported; duplicates normalize to ascending unique offsets. Retention over new-in-window cohorts: a user's cohort day is their first activity within the requested from/to window (users active before the window re-appear as new). Offset 0 (the cohort day itself) is always included.",
         "operationId": "getMetricsRetention",
         "parameters": [
           {
@@ -1976,69 +2606,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `days` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -2055,7 +2739,7 @@
     },
     "/metrics/revenue": {
       "get": {
-        "description": "The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
         "operationId": "getMetricsRevenue",
         "parameters": [
           {
@@ -2117,69 +2801,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -2196,7 +2934,7 @@
     },
     "/metrics/sessions": {
       "get": {
-        "description": "The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
         "operationId": "getMetricsSessions",
         "parameters": [
           {
@@ -2258,69 +2996,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -2337,7 +3129,7 @@
     },
     "/metrics/users": {
       "get": {
-        "description": "The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
+        "description": "Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value.",
         "operationId": "getMetricsUsers",
         "parameters": [
           {
@@ -2399,69 +3191,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
             "description": "A valid credential lacks metrics-read permission"
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "429": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -2509,66 +3355,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `body`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "415": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Unsupported media type"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -2613,66 +3516,123 @@
           },
           "400": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Malformed request or `body`"
           },
           "401": {
-            "description": "Missing, malformed, unknown, or revoked credential"
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "404": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Not found"
           },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
           "413": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
             "description": "Payload too large"
           },
-          "503": {
+          "415": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
-                }
-              },
-              "application/json;charset=utf-8": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelopeWire"
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             },
-            "description": "Storage unavailable"
+            "description": "Unsupported media type"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
           }
         },
         "security": [
@@ -2701,6 +3661,46 @@
               }
             },
             "description": ""
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
           }
         },
         "tags": [

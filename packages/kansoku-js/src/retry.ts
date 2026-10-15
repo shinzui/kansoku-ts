@@ -1,7 +1,7 @@
-import type { BatchAck, ErrorEnvelopeWire } from "./contract/wire.js"
+import type { BatchAck, ProblemDetails } from "./contract/wire.js"
 export type DeliveryOutcome =
   | { kind: "accepted"; ack: BatchAck }
-  | { kind: "permanent"; status: number; envelope?: ErrorEnvelopeWire }
+  | { kind: "permanent"; status: number; envelope?: ProblemDetails }
   | { kind: "too_large" }
   | { kind: "retryable"; detail?: string }
 export function backoffDelayMs(

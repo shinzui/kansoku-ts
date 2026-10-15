@@ -9,7 +9,7 @@ export const BUILT_IN_SCHEMA_VERSIONS: Readonly<Record<string, number>> = Object
   [SESSION_START]: 1,
   [EXPERIMENT_VIEWED]: 1,
 })
-export const IDENTIFIER_KINDS = ["cookie", "device", "fingerprint", "email_sha256"] as const
+export { IDENTIFIER_KINDS } from "../generated/identifier-kinds.js"
 export const MIN_SCHEMA_VERSION = 1
 export const MAX_SCHEMA_VERSION = 65535
 export const EXPERIMENT_NAME_PATTERN = /^[a-z0-9_.:-]{1,128}$/

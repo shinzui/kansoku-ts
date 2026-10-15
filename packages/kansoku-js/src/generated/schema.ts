@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value. */
+        /** @description Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
         get: operations["getMetricsAcquisition"];
         put?: never;
         post?: never;
@@ -28,7 +28,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value. */
+        /** @description Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
         get: operations["getMetricsConversion"];
         put?: never;
         post?: never;
@@ -45,7 +45,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value. */
+        /** @description Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
         get: operations["getMetricsCustom"];
         put?: never;
         post?: never;
@@ -62,7 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value. */
+        /** @description Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
         get: operations["getMetricsEvents"];
         put?: never;
         post?: never;
@@ -130,7 +130,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value. */
+        /** @description Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
         get: operations["getMetricsFeatureAdoption"];
         put?: never;
         post?: never;
@@ -164,7 +164,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value. */
+        /** @description Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
         get: operations["getMetricsOrganizations"];
         put?: never;
         post?: never;
@@ -181,7 +181,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value. */
+        /** @description Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
         get: operations["getMetricsPageViews"];
         put?: never;
         post?: never;
@@ -215,7 +215,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value. */
+        /** @description Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
         get: operations["getMetricsRevenue"];
         put?: never;
         post?: never;
@@ -232,7 +232,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value. */
+        /** @description Distinct nonempty session IDs over a positive half-open range of at most 366 days; at most 10000 complete points. Only from, to and optional timeGrain are supported here; other parameters return HTTP 400. */
         get: operations["getMetricsSessions"];
         put?: never;
         post?: never;
@@ -249,7 +249,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. The optional groupBy parameter accepts exactly one dimension: event_name, source, route, or prop:<name>. Property names must be declared in the event registry for every event queried by the metric. Unknown, undeclared, or multiple dimensions return HTTP 400 naming the invalid value. */
+        /** @description Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
         get: operations["getMetricsUsers"];
         put?: never;
         post?: never;
@@ -373,9 +373,10 @@ export interface components {
             eventId: string;
         };
         MetricPoint: {
-            bucket?: string;
+            bucket?: string | null;
+            /** @description Full dimension names map to scalar text or null. Empty string and null are distinct. */
             group: {
-                [key: string]: string;
+                [key: string]: string | null;
             };
             /** Format: double */
             value: number;
@@ -440,6 +441,7 @@ export interface operations {
                 to: string;
                 groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -457,7 +459,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `groupBy` or `to` or `from` */
+            /** @description Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -560,6 +562,7 @@ export interface operations {
                 to: string;
                 groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -577,7 +580,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `groupBy` or `to` or `from` */
+            /** @description Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -680,6 +683,7 @@ export interface operations {
                 to: string;
                 groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -697,7 +701,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `groupBy` or `to` or `from` */
+            /** @description Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -800,6 +804,7 @@ export interface operations {
                 to: string;
                 groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -817,7 +822,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `groupBy` or `to` or `from` */
+            /** @description Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1281,6 +1286,7 @@ export interface operations {
                 to: string;
                 groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -1298,7 +1304,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `groupBy` or `to` or `from` */
+            /** @description Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1521,6 +1527,7 @@ export interface operations {
                 to: string;
                 groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -1538,7 +1545,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `groupBy` or `to` or `from` */
+            /** @description Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1641,6 +1648,7 @@ export interface operations {
                 to: string;
                 groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -1658,7 +1666,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `groupBy` or `to` or `from` */
+            /** @description Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1880,6 +1888,7 @@ export interface operations {
                 to: string;
                 groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -1897,7 +1906,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `groupBy` or `to` or `from` */
+            /** @description Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1998,7 +2007,6 @@ export interface operations {
             query: {
                 from: string;
                 to: string;
-                groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
             };
             header?: never;
@@ -2017,7 +2025,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `groupBy` or `to` or `from` */
+            /** @description Malformed request or `timeGrain` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2120,6 +2128,7 @@ export interface operations {
                 to: string;
                 groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -2137,7 +2146,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `groupBy` or `to` or `from` */
+            /** @description Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;

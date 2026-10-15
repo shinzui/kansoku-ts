@@ -6,6 +6,8 @@ import { BUILT_IN_SCHEMA_VERSIONS, IDENTIFIER_KINDS } from "../src/contract/even
 import type {
   AnalyticsEvent,
   BatchAck,
+  MetricPoint,
+  paths,
   ProblemDetails,
   RejectedEvent,
   SchemaCatalog,
@@ -22,6 +24,11 @@ const requiredKeys: Equal<
 const ackType: Equal<BatchAck, { accepted: number; rejected: RejectedEvent[] }> = true
 const governedCatalog: SchemaCatalog = catalog
 const retryable: Equal<ProblemDetails["retryable"], boolean> = true
+const nullableGroup: Equal<MetricPoint["group"][string], string | null> = true
+const repeatableFilters: Equal<
+  paths["/metrics/events"]["get"]["parameters"]["query"]["filter"],
+  string[] | undefined
+> = true
 
 test("wire types match the required event and response shapes", () => {
   expect([requiredKeys, ackType, retryable]).toEqual([true, true, true])
@@ -49,6 +56,20 @@ test("wire types match the required event and response shapes", () => {
     expect(api.components.schemas).toHaveProperty(name)
   }
 })
+test("metric contracts preserve missing groups and repeatable filters", () => {
+  expect([nullableGroup, repeatableFilters]).toEqual([true, true])
+  const point: MetricPoint = {
+    bucket: null,
+    group: { source: "web", "prop:plan": null, "prop:empty": "" },
+    value: 1,
+  }
+  expect(JSON.parse(JSON.stringify(point))).toEqual(point)
+  expect(api.components.schemas.MetricPoint.properties.group.additionalProperties.type).toEqual([
+    "string",
+    "null",
+  ])
+})
+
 test("catalog and source pin carry the governed contract", async () => {
   expect(catalog.catalogVersion).toBe(3)
   expect([...IDENTIFIER_KINDS] as string[]).toEqual(catalog.identifierKinds)

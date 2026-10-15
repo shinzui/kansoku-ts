@@ -2,3 +2,15 @@
 .agents/
 .seihou/manifest.json.tmp
 CLAUDE.local.md
+node_modules
+dist
+build
+.direnv
+result
+result-*
+*.log
+.env
+.env.local
+bun.lock.bak
+.DS_Store
+.pre-commit-config.yaml

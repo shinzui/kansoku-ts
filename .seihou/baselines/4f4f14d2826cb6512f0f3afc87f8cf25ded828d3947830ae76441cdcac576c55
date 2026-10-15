@@ -1,0 +1,7 @@
+# Copy to flake.module.nix for customizations that survive Seihou upgrades.
+{ ... }:
+{
+  perSystem = { pkgs, ... }: {
+    bunProject.extraDevPackages = [ pkgs.jq ];
+  };
+}

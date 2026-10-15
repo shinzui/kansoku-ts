@@ -1,0 +1,7 @@
+watch_file nix/bun.nix
+watch_file nix/tooling.nix
+watch_file nix/pre-commit.nix
+watch_file flake.module.nix
+use flake
+eval "$shellHook"
+source_env_if_exists .envrc.local

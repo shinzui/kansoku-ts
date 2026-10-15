@@ -172,7 +172,7 @@ test("public factory returns a usable core client", async () => {
     fetch: mock.fetch,
     storage: "memory",
     persistQueue: false,
-    autocapture: { sessions: false },
+    autocapture: { sessions: false, pageViews: false },
   })
   client.track("ready")
   await client.shutdown()

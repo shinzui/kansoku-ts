@@ -66,6 +66,18 @@ export interface KansokuStats {
   dropped: number
 }
 export interface KansokuClient {
+  page(properties?: JsonObject, options?: TrackOptions): void
+  identify(userId: string, traits?: JsonObject): void
+  alias(previousId: string, newId: string, properties?: JsonObject): void
+  group(organizationId: string, properties?: JsonObject): void
+  experiment(
+    experiment: string,
+    variant: string,
+    properties?: JsonObject,
+    options?: ExperimentOptions,
+  ): void
+  setIdentifiers(identifiers: Partial<Record<IdentifierKind, string>>): void
+  reset(): void
   track(eventName: string, properties?: JsonObject, options?: TrackOptions): void
   flush(): Promise<void>
   start(): void
@@ -79,4 +91,7 @@ export interface KansokuClient {
   getSessionId(): string
   readonly stats: Readonly<KansokuStats>
   readonly config: ResolvedKansokuOptions
+}
+export interface ExperimentOptions {
+  force?: boolean
 }

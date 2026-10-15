@@ -17,6 +17,11 @@ provenance:
       at: 2026-10-15T03:17:45Z
       mode: "update"
       note: "Bind initial page view and History patch to start/stop via onStart, add Global Privacy Control gate"
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-10-15T03:59:45Z
+      mode: "implement"
+      note: "Implement browser capture, identity helpers, exposure dedupe and privacy gates"
 ---
 
 # kansoku-js browser capture: page views, navigation, attribution, identity helpers, and experiments
@@ -65,23 +70,23 @@ build directly on the surface this plan adds.
 
 ## Progress
 
-- [ ] Milestone 1 — `page()` records a `page_view` with attribution and context, and
+- [x] (2026-10-14; package suite, SSR smoke, build and checks pass) Milestone 1 — `page()` records a `page_view` with attribution and context, and
   `createKansoku` autocaptures the initial page view. Accepted when `bun test
   packages/kansoku-js/test/page.test.ts packages/kansoku-js/test/attribution.test.ts
   packages/kansoku-js/test/context.test.ts` passes and the mocked batch contains the event
   shape shown in Validation and Acceptance.
-- [ ] Milestone 2 — single-page navigation produces page views: `history.pushState`,
+- [x] (2026-10-14; package suite, SSR smoke, build and checks pass) Milestone 2 — single-page navigation produces page views: `history.pushState`,
   `history.replaceState`, and `popstate` each yield a deduplicated `page_view`, the patch is
   installed by `start()` and removed by `stop()` (and therefore by `shutdown()`), a client
   created with `autoStart: false` records nothing until `start()`, and the
   `autocapture.pageViews` / `autocapture.sessions` switches work.
   Accepted when `bun test packages/kansoku-js/test/navigation.test.ts` passes and the
   happy-dom script in Validation and Acceptance prints two page views.
-- [ ] Milestone 3 — identity API: `identify`, `alias`, `group`, `setIdentifiers`, and `reset`
+- [x] (2026-10-14; package suite, SSR smoke, build and checks pass) Milestone 3 — identity API: `identify`, `alias`, `group`, `setIdentifiers`, and `reset`
   emit the exact shapes of the Haskell SDK helpers, validate inputs client-side, and persist
   state under the agreed storage keys. Accepted when `bun test
   packages/kansoku-js/test/identity-api.test.ts` passes.
-- [ ] Milestone 4 — `experiment()` with validation and per-session dedupe, Global Privacy
+- [x] (2026-10-14; package suite, SSR smoke, build and checks pass) Milestone 4 — `experiment()` with validation and per-session dedupe, Global Privacy
   Control, Do Not Track, and opt-out gating of all capture, server-side-rendering import
   safety, README API
   documentation, and ADR updates. Accepted when `bun test packages/kansoku-js` passes in
@@ -92,7 +97,7 @@ build directly on the surface this plan adds.
 
 ## Surprises & Discoveries
 
-(None yet.)
+Exposure dedupe is persisted only after successful enqueue, so beforeSend redaction or capacity drops do not prevent a later valid exposure. The SSR smoke injects a successful transport rather than waiting on an unavailable localhost service; it exercises import and capture/lifecycle safety without adding a network prerequisite.
 
 
 ## Decision Log
@@ -154,7 +159,7 @@ build directly on the surface this plan adds.
 
 ## Outcomes & Retrospective
 
-(To be filled during and after implementation.)
+Implemented page views, navigation, context, attribution, identity and exposure helpers and privacy gates on the shared core. All 41 kansoku-js tests pass, along with SSR smoke, type checks, build and strict validation of four ADRs. Capture is lifecycle-bound and restart-deduplicated for React StrictMode.
 
 
 ## Context and Orientation

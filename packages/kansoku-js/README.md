@@ -13,6 +13,45 @@ analytics.track("signup_started", { plan: "team" })
 await analytics.flush()
 ```
 
+## Browser capture
+
+By default the client records the initial `page_view`, History API navigations and
+`session_start`. Initialise after the page title is set. Page views include the full URL,
+path, title, document referrer and UTM attribution (`utmSource`, `utmMedium`, `utmCampaign`,
+`utmContent`, `utmTerm`). History changes are captured on the next task so a router's
+push/replace pair records once; hash-only changes are ignored.
+
+Call `page(properties?, options?)` for explicit page views. Disable automatic capture with
+`autocapture: { pageViews: false, sessions: false }`. `autoStart: false` defers the initial
+page view and History patch until `start()`. `stop()` removes the patch; restarting on the
+same URL does not record another initial view.
+
+Each event collects locale, timezone, screen size, viewport size, user agent and library
+version. `options.context` can override these values. No IP address, fingerprint or precise
+location is collected by the SDK. URLs and caller-supplied properties may contain personal
+data: use `beforeSend` to redact them.
+
+## Identity and experiments
+
+`identify(userId, traits?)` persists the user ID and sends traits as event properties.
+`alias(previousId, newId, properties?)` links identities for one event and leaves the stored
+user unchanged. `group(organizationId, properties?)` persists the organisation for later
+events. `setIdentifiers({ device, fingerprint, email_sha256, cookie })` replaces optional
+identity signals; provide only the keys needed. Values must contain 1–256 printable,
+non-space ASCII characters. The anonymous ID already supplies the implicit cookie signal.
+
+`reset()` clears user, organisation, signals and exposure history and rotates anonymous and
+session IDs. Events already queued retain their original attribution. Call it explicitly at logout.
+
+`experiment(name, variant, properties?, { force?: boolean })` records `experiment_viewed`
+when a variant is actually shown. Names match `^[a-z0-9_.:-]{1,128}$`. The same pair is sent
+once per session unless `force: true` is given; it can be recorded again after `reset()`.
+The SDK records exposure and does not assign variants or evaluate feature flags.
+
+`respectGlobalPrivacyControl: true` honors `navigator.globalPrivacyControl === true`.
+`respectDoNotTrack: true` honors the legacy DNT signal. Both default to false. These gates
+and opt-out silently skip automatic capture; explicit calls report `opted_out` drops.
+
 ## Core API
 
 `track(name, properties?, options?)` queues an event with anonymous and session IDs.

@@ -35,7 +35,10 @@ lint-fix:
     oxlint --fix
 
 # Run all checks: typecheck, lint, and formatting
-check: typecheck lint format-check
+check: typecheck lint format-check ssr-smoke
+
+ssr-smoke:
+    bun scripts/ssr-smoke.ts
 
 build:
     bun scripts/build.ts packages/kansoku-js

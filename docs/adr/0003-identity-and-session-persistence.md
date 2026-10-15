@@ -5,10 +5,10 @@ description: Share browser identity through an adapter while keeping the pending
 docId: ADR-3
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-15T04:00:00Z
+timestamp: 2026-10-15T04:05:00Z
 generated:
   by: process:codex
-  at: 2026-10-15T04:00:00Z
+  at: 2026-10-15T04:05:00Z
 ---
 
 # Identity and session persistence
@@ -34,6 +34,11 @@ Cookie values use path `/`, SameSite=Lax, Secure on HTTPS and at most a 400-day 
 
 Only the server's closed identifier vocabulary is accepted, as described by
 `mori://shinzui/kansoku/okf/adrs/concepts/ADR-5`.
+
+`kansoku.exposures` stores `{ sessionId, keys }`, where each key joins experiment and
+variant with a NUL separator. A stale session invalidates these keys. `reset()` clears
+user, organisation, signals and exposures, rotates anonymous and session IDs and records
+a new session start when enabled. Queued events keep their original IDs and attribution.
 
 ## Alternatives considered
 

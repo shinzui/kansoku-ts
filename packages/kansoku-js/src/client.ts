@@ -1,15 +1,21 @@
+import { collectContext, isDoNotTrackEnabled, isGlobalPrivacyControlEnabled } from "./context.js"
 import { BUILT_IN_SCHEMA_VERSIONS, SESSION_START } from "./contract/events.js"
 import { validateEvent } from "./contract/validate.js"
 import type { AnalyticsEvent, JsonObject } from "./contract/wire.js"
 import { buildEvent } from "./envelope.js"
 import type { WebFields } from "./envelope.js"
+import { recordExposure } from "./experiment.js"
+import { createIdentityApi } from "./identity-api.js"
 import { createIdentity } from "./identity.js"
 import { attachExitFlush } from "./lifecycle.js"
+import { installNavigationCapture } from "./navigation.js"
+import { buildPageView } from "./page.js"
 import { createQueue, jsonBytes } from "./queue.js"
 import { backoffDelayMs } from "./retry.js"
 import { createSession } from "./session.js"
 import { readJSON, resolveStorage, sessionStorageAdapter } from "./storage.js"
 import { sendBatch } from "./transport.js"
+import type { ExperimentOptions } from "./types.js"
 import type {
   DropReason,
   KansokuClient,
@@ -17,6 +23,7 @@ import type {
   ResolvedKansokuOptions,
   TrackOptions,
 } from "./types.js"
+import { version } from "./version.js"
 
 export function resolveOptions(options: KansokuOptions): ResolvedKansokuOptions {
   const url = new URL(options.baseUrl)
@@ -363,11 +370,54 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
     identity,
     session,
     storage,
+    rotateSession() {
+      const current = session.rotate(config.now())
+      pendingSession = current.id
+      if (!suppressed() && config.autocapture.sessions !== false) {
+        pendingSession = undefined
+        enqueueBuilt(rawEvent(SESSION_START, { sessionId: current.id }))
+      }
+    },
   }
   if (config.autoStart && !deferStart) client.start()
   return client
 }
 export type InternalClient = ReturnType<typeof createInternalClient>
 export function createKansoku(options: KansokuOptions): KansokuClient {
-  return createInternalClient(options)
+  const core = createInternalClient(options, true)
+  core.registerContextProvider(() => collectContext(version))
+  core.setSuppression(
+    () =>
+      (core.config.respectDoNotTrack && isDoNotTrackEnabled()) ||
+      (core.config.respectGlobalPrivacyControl && isGlobalPrivacyControlEnabled()),
+  )
+  const client: KansokuClient = Object.assign(core, createIdentityApi(core), {
+    page(properties?: JsonObject, trackOptions?: TrackOptions) {
+      if (typeof document !== "undefined")
+        core.enqueueBuilt(buildPageView(core, properties, trackOptions))
+    },
+    experiment(
+      experiment: string,
+      variant: string,
+      properties?: JsonObject,
+      exposureOptions?: ExperimentOptions,
+    ) {
+      recordExposure(core, experiment, variant, properties, exposureOptions)
+    },
+  })
+  let lastPage: string | undefined
+  core.onStart(() => {
+    if (core.config.autocapture.pageViews === false || typeof document === "undefined") return
+    const capture = () => {
+      if (core.isSuppressed()) return
+      const key = location.origin + location.pathname + location.search
+      if (key === lastPage) return
+      client.page()
+      lastPage = key
+    }
+    capture()
+    return installNavigationCapture(core.config, capture)
+  })
+  if (core.config.autoStart) client.start()
+  return client
 }

@@ -11,6 +11,12 @@ provenance:
     model: "claude-fable-5-1"
     harness: "claude-code"
     at: 2026-10-15T02:11:18Z
+  revisions:
+    - model: "claude-fable-5-1"
+      harness: "claude-code"
+      at: 2026-10-15T03:17:45Z
+      mode: "update"
+      note: "Smoke test reads sessionStorage queue mirror; correct useKansoku SSR return; note provider lifecycle under StrictMode"
 ---
 
 # Examples, live contract conformance, and real-browser smoke test
@@ -180,6 +186,7 @@ client.page()                                     // explicit page_view
 client.identify("user_42", { plan: "pro" })       // emits identify, stamps userId afterwards
 client.experiment("pricing_layout", "variant_b")  // emits experiment_viewed once per session
 client.reset()                                    // forgets the user, rotates anonymous id and session
+client.stop(); client.start()                     // reversible lifecycle; createKansoku starts unless autoStart: false
 await client.flush()
 await client.shutdown()
 client.stats                                      // { queued, accepted, rejected, dropped }
@@ -195,7 +202,8 @@ with `schemaVersion: 1`. HTTP 202 ends the attempt; rejected entries are dropped
 503 with `retryable: true`, network errors, and timeouts are retried with backoff. On
 `visibilitychange` to `hidden` and on `pagehide` the SDK flushes with keepalive requests of at
 most 60 KiB each. With the default `persistQueue: true`, pending events are mirrored to the
-storage key `kansoku.queue` and the key is emptied as batches are acknowledged.
+`sessionStorage` key `kansoku.queue` (per tab; identity lives in `localStorage`) and the key is
+emptied as batches are acknowledged.
 
 The React surface, delivered by EP-4
 (`docs/plans/4-kansoku-react-provider-hooks-and-router-agnostic-page-tracking.md`):
@@ -210,12 +218,15 @@ import { KansokuProvider, useKansoku, useTrack, useIdentify, useExperiment } fro
 const track = useTrack()                       // stable track(eventName, properties?)
 useIdentify(user?.id, { plan: user?.plan })    // identifies when the id becomes defined or changes
 useExperiment("pricing_layout", variant)       // records exposure once per session, StrictMode-safe
-const client = useKansoku()                    // the underlying KansokuClient, null during SSR
+const client = useKansoku()                    // the underlying KansokuClient; a no-op client during SSR
 ```
 
 `KansokuProvider` leaves the `kansoku-js` defaults alone, so autocapture of page views is on
 and React Router navigation (which calls `history.pushState`) is recorded without any
-React-specific code. `usePageView` exists for applications that turn autocapture off; this plan
+React-specific code. It constructs the client with `autoStart: false` and calls `start()` from
+an effect and `stop()` from the effect's cleanup, so StrictMode's extra setup-and-cleanup cycle
+restarts the client and records one initial `page_view`, which the React example's acceptance
+counts rely on. `usePageView` exists for applications that turn autocapture off; this plan
 deliberately does not use it.
 
 ADRs. Local architecture decision records live in `docs/adr/` (the bundle EP-1 installs with
@@ -287,8 +298,10 @@ dependencies. `src/main.tsx` renders `<StrictMode>` → `<KansokuProvider option
 calls `useIdentify(user?.id, { plan: user?.plan })`, a sign-out button that calls
 `client.reset()`, and a pricing page with a "variant" toggle (`control` / `variant_b`) whose
 `PricingPanel` component calls `useExperiment("pricing_layout", variant)`. StrictMode matters:
-it mounts effects twice in development, and the example must still emit one
-`experiment_viewed` per variant per session because EP-3's exposure dedupe is doing its job.
+it runs effects twice in development, and the example must still emit one `page_view` for the
+initial load (the provider's `start()` → `stop()` → `start()` restart is deduplicated by URL)
+and one `experiment_viewed` per variant per session because EP-3's exposure dedupe is doing its
+job.
 The same `.env.example`, `.env.local`, README, and `onDrop` logging conventions apply, with
 `sourceService: "react-example"`; the README likewise states that `just build` must run first,
 since both `kansoku-react` and `kansoku-js` are consumed from their `dist/` output.
@@ -369,9 +382,11 @@ calls `page.waitForRequest` until the recorded `page_view` events cover `/`, `/p
 confirms a `cta_clicked` event arrives; then navigates to `about:blank` and asserts that a final
 request arrived with the remaining events and that `request.headers()["x-api-key"]` is
 `ksk_w_smoke` on every request. Before navigating away it evaluates
-`localStorage.getItem("kansoku.queue")` to confirm events were mirrored while pending, and after
-re-opening `/` (same origin, same storage) it asserts the key is `null` or `[]`, proving the
-exit flush was acknowledged and the queue emptied rather than replayed. Also assert that at
+`sessionStorage.getItem("kansoku.queue")` to confirm events were mirrored while pending (the
+mirror is per tab, which is why it is `sessionStorage` and not `localStorage`), and after
+re-opening `/` in the same Playwright page (same tab, so the same `sessionStorage`) it asserts
+the key is `null` or `[]`, proving the exit flush was acknowledged and the queue emptied rather
+than replayed. Also assert that at
 least one request was `pushState`-triggered by checking that the browser never performed a
 full navigation (count `page.on("load")` events; expect exactly one for the initial load and
 one for the re-open).
@@ -388,7 +403,7 @@ Document the manual fallback in `test/smoke/README.md` for machines where the br
 is blocked: run `just dev-vanilla`, open Chrome DevTools → Network, tick "Preserve log", filter
 on `batch`, click through the routes, navigate to another site, and confirm the last
 `POST /v1/batch` row shows the `keepalive`-flagged request with the remaining events and a 202
-response; then check Application → Local Storage → `kansoku.queue` is empty. The fallback must
+response; then check Application → Session Storage → `kansoku.queue` is empty. The fallback must
 be exercised once and the observation recorded in Surprises & Discoveries.
 
 Acceptance: `just test-smoke` passes in headless Chromium; the test fails if the final batch is
@@ -655,8 +670,8 @@ Artifacts this plan consumes and must not redefine: `createKansoku`, `KansokuOpt
 (`baseUrl`, `writeKey`, `sourceService`, `maxBatchEvents`, `flushAt`, `fetch`, `now`, `onDrop`),
 `KansokuClient` (`track`, `page`, `identify`, `experiment`, `reset`, `flush`, `shutdown`,
 `stats`) from `packages/kansoku-js/src/index.ts`; `KansokuProvider`, `useKansoku`, `useTrack`,
-`useIdentify`, `useExperiment` from `packages/kansoku-react/src/index.ts`; the storage key
-`kansoku.queue` and the keepalive exit flush from `packages/kansoku-js/src/lifecycle.ts`;
+`useIdentify`, `useExperiment` from `packages/kansoku-react/src/index.ts`; the `sessionStorage`
+key `kansoku.queue` and the keepalive exit flush from `packages/kansoku-js/src/lifecycle.ts`;
 `contracts/events.json` and `contracts/KANSOKU_COMMIT` from EP-1.
 
 Artifacts this plan owns: `examples/vanilla-vite/**`, `examples/react-vite/**`,

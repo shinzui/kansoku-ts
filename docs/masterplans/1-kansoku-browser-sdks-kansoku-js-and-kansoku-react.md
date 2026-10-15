@@ -10,6 +10,12 @@ provenance:
     model: "claude-fable-5-1"
     harness: "claude-code"
     at: 2026-10-15T02:03:47Z
+  revisions:
+    - model: "claude-fable-5-1"
+      harness: "claude-code"
+      at: 2026-10-15T03:17:45Z
+      mode: "update"
+      note: "Best-practices review: reversible start/stop lifecycle, GPC gate, sessionStorage queue mirror, React provider redesign, reconciled cross-plan inconsistencies"
 ---
 
 # Kansoku Browser SDKs: kansoku-js and kansoku-react
@@ -45,13 +51,17 @@ navigation (changes made through the browser's History API), starts a session an
 event with its `sessionId`, assigns and persists an anonymous identifier, and delivers events to
 `POST /v1/batch` in batches with the retry behaviour the server contract requires. The
 application can additionally call `track`, `identify`, `alias`, `group`, `experiment`, `reset`,
-`flush`, and `shutdown`, attach the server's four supported identity signals (`cookie`,
-`device`, `fingerprint`, `email_sha256`), and pin the schema version of governed events. Events
-queued when the user leaves the page are flushed with a keepalive request so they are not lost.
-A React application wraps its tree in `KansokuProvider` and uses `useKansoku`, `useTrack`,
-`usePageView`, `useIdentify`, and `useExperiment` hooks that are safe under server-side
-rendering and React StrictMode. Both packages ship ESM and CommonJS builds with TypeScript
-declarations, have zero runtime dependencies, stay under a published size budget, and are
+`flush`, and `shutdown`, pause and resume capture with `stop` and `start`, attach the server's
+four supported identity signals (`cookie`, `device`, `fingerprint`, `email_sha256`), pin the
+schema version of governed events, and honour the browser's Global Privacy Control or Do Not
+Track signal with one option each. Events queued when the user leaves the page are flushed with
+a keepalive request so they are not lost. A React application wraps its tree in
+`KansokuProvider` and uses `useKansoku`, `useTrack`, `usePageView`, `useIdentify`, and
+`useExperiment` hooks that are safe under server-side rendering and React StrictMode because
+the provider drives the client's reversible lifecycle from an effect rather than constructing a
+side-effecting client during render. Both packages ship as ESM-only builds with TypeScript
+declarations (Node 20.19 and later, which is every supported Node release today, can
+`require()` them), have zero runtime dependencies, stay under a published size budget, and are
 released to npm with provenance through trusted publishing.
 
 Term definitions used throughout this MasterPlan. Each child plan repeats the ones it needs so
@@ -89,7 +99,8 @@ it stays self-contained.
 - **happy-dom**: a JavaScript implementation of browser APIs used to run DOM-dependent unit
   tests under `bun test` without a real browser.
 - **ESM / CJS**: the two JavaScript module systems (`import` / `require`). Both packages publish
-  both so bundlers, Node, and legacy tooling can consume them.
+  ESM only; CommonJS consumers load them through Node's `require(esm)`, available unflagged
+  since Node 20.19 and 22.12, which covers every Node release still supported in 2026.
 - **Trusted publishing**: npm's OpenID Connect flow in which a GitHub Actions workflow publishes
   without a long-lived token and npm attaches provenance attestations.
 
@@ -132,7 +143,14 @@ backoff and jitter; flush remaining events on `visibilitychange` and `pagehide` 
 that survives navigation; expose a `beforeSend` hook for redaction and a drop callback for loss
 accounting; provide opt-out and consent controls; patch the History API for SPA page views and
 parse UTM attribution; ship tree-shakeable ESM with type declarations and a size budget; and
-publish framework bindings as separate thin packages. Two of their choices were deliberately
+publish framework bindings as separate thin packages. The React binding follows the pattern
+TanStack Query's `QueryClientProvider` established for wrapping an external client: the client
+is constructed without side effects, and the provider's effect drives a reversible pair of
+lifecycle calls (`start` on setup, `stop` on cleanup), so React StrictMode's extra
+setup-and-cleanup cycle in development is harmless by construction rather than by a timing
+workaround. Privacy gating follows what browsers actually ship in 2026: Firefox removed its Do
+Not Track setting in version 135 and points users to Global Privacy Control, so the SDK offers
+an opt-in gate for each signal. Two of their choices were deliberately
 not copied: a separate `core` package (two packages do not justify a third; the core modules
 inside `kansoku-js` are kept runtime-agnostic so a Node SDK can extract them later) and
 `navigator.sendBeacon` as the exit transport (it cannot send headers, and Kansoku requires the
@@ -266,29 +284,42 @@ development dependency for that generator only; `tsc` 7.0.2 from the dev shell r
 compiler for type-checking and declaration emit. A shared
 `tsconfig.base.json` adds `"lib": ["ES2022", "DOM", "DOM.Iterable"]` for the packages; the
 root `tsconfig.json` keeps the scaffold's Bun settings for scripts. `scripts/build.ts <package>`
-runs `Bun.build` twice (ESM to `dist/index.js`, CJS to `dist/index.cjs`, `target: "browser"`,
-`format` per output, no minification, `sourcemap: "linked"`) and then `tsc -p
-<package>/tsconfig.build.json` to emit `dist/index.d.ts`, copying it to `dist/index.d.cts` so
-CommonJS consumers resolve correct types. The script reads an optional per-package manifest
-field `"kansoku": { "banner": "..." }` and passes it as the `banner` option of both `Bun.build`
-calls; `kansoku-react` uses it to keep its `"use client"` directive on line 1 of both outputs
-(verified on 2026-10-14 that without it Bun 1.4.2 moves the directive after the CommonJS module
-helpers, where it is no longer a directive). Each package manifest declares `"type": "module"`,
-`"sideEffects": false`, `"files": ["dist", "README.md", "CHANGELOG.md"]`, and the export map
-below. EP-6 verifies this shape with `publint` and `@arethetypeswrong/cli`.
+runs `Bun.build` once (`format: "esm"`, `target: "browser"`, output `dist/index.js`, no
+minification, `sourcemap: "linked"`, externals from `dependencies` and `peerDependencies`) and
+then `tsc -p <package>/tsconfig.build.json` to emit `dist/index.d.ts` beside per-module
+declaration files. There is no CommonJS output and no `.d.cts` copy: both packages are
+ESM-only, and CommonJS consumers on any supported Node release load them through
+`require(esm)`. The script reads an optional per-package manifest field
+`"kansoku": { "banner": "..." }` and passes it as the `banner` option of `Bun.build`;
+`kansoku-react` uses it to keep its `"use client"` directive on line 1 of `dist/index.js`
+(verified on 2026-10-14 with Bun 1.4.2 that, when the module has an external import such as
+`react`, the bundler emits the `import` statement first and the source-level directive after it,
+where it is no longer a directive; the banner is the only way to keep it in the prologue). Each
+package manifest declares `"type": "module"`, `"sideEffects": false`,
+`"files": ["dist", "README.md", "CHANGELOG.md"]`, `"engines": { "node": ">=20.19.0" }` (the
+`require(esm)` floor, so an unsupported Node gets an install warning rather than a confusing
+runtime error), and the export map below. `kansoku-react` additionally declares
+`peerDependencies` of `react` `^18.0.0 || ^19.0.0`, `kansoku-js` `^0.1.0` (a literal range; see
+Versioning and release), and `@types/react` `>=18` marked optional in `peerDependenciesMeta`,
+the convention React libraries such as zustand use so TypeScript consumers resolve the types the
+declaration files import without forcing JavaScript consumers to install them. EP-1 scaffolds
+these fields and EP-4 owns their final values. EP-6 verifies the package shape with `publint`
+and `@arethetypeswrong/cli --profile esm-only`. Shipping one module format also removes the
+dual-package hazard: there is exactly one copy of `kansoku-react`'s context object however the
+package is loaded. The one consumer cost is Jest in its default CommonJS mode, which does not
+use Node's `require(esm)` and needs the package added to its ESM transform allowlist; the
+READMEs say so.
 
 ```json
 {
+  "type": "module",
   "exports": {
-    ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
-    },
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts"
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "engines": { "node": ">=20.19.0" }
 }
 ```
 
@@ -325,6 +356,7 @@ export interface KansokuOptions {
   baseUrl: string                         // e.g. "https://analytics.example.com"; no trailing slash
   writeKey: string                        // ksk_w_… ; sent as X-Api-Key
   sourceService?: string                  // stamps AnalyticsEvent.sourceService
+  autoStart?: boolean                     // default true; false constructs without side effects until start()
   flushAt?: number                        // default 20 events
   flushIntervalMs?: number                // default 5000
   maxQueueSize?: number                   // default 1000; newest event dropped when full
@@ -333,15 +365,16 @@ export interface KansokuOptions {
   maxRetries?: number                     // default 5
   retryBaseDelayMs?: number               // default 500; exponential, full jitter, 30 s cap
   requestTimeoutMs?: number               // default 10000
-  persistQueue?: boolean                  // default true
-  storage?: "localStorage" | "cookie" | "memory" | StorageAdapter   // default localStorage
+  persistQueue?: boolean                  // default true; mirrors the queue to sessionStorage (per tab)
+  storage?: "localStorage" | "cookie" | "memory" | StorageAdapter   // identity, session, opt-out, exposures; default localStorage
   storageKeyPrefix?: string               // default "kansoku"
   cookieDomain?: string                   // only for the cookie adapter
   sessionTimeoutMs?: number               // default 1_800_000 (30 min)
   schemaVersions?: Record<string, number> // per-event pins; merged over built-in defaults
   autocapture?: { pageViews?: boolean; sessions?: boolean }   // defaults true/true (EP-3)
   optOut?: boolean                        // start opted out
-  respectDoNotTrack?: boolean             // default false
+  respectDoNotTrack?: boolean             // default false; navigator.doNotTrack === "1" suppresses capture
+  respectGlobalPrivacyControl?: boolean   // default false; navigator.globalPrivacyControl === true suppresses capture
   beforeSend?: (event: AnalyticsEvent) => AnalyticsEvent | null
   onDrop?: (info: DropInfo) => void
   fetch?: typeof globalThis.fetch         // injectable for tests
@@ -360,7 +393,9 @@ export interface KansokuClient {
   // EP-2
   track(eventName: string, properties?: JsonObject, options?: TrackOptions): void
   flush(): Promise<void>
-  shutdown(): Promise<void>
+  start(): void                            // idempotent; attaches listeners, timer, capture; no-op after shutdown
+  stop(): void                             // idempotent inverse of start(); detaches and begins a non-blocking flush
+  shutdown(): Promise<void>                // stop(), await the final flush, then refuse further events
   optOut(): void
   optIn(): void
   isOptedOut(): boolean
@@ -368,7 +403,7 @@ export interface KansokuClient {
   getUserId(): string | undefined
   getSessionId(): string
   readonly stats: Readonly<{ queued: number; accepted: number; rejected: number; dropped: number }>
-  readonly config: Readonly<ResolvedKansokuOptions>
+  readonly config: ResolvedKansokuOptions
   // EP-3
   page(properties?: JsonObject, options?: TrackOptions): void
   identify(userId: string, traits?: JsonObject): void
@@ -382,10 +417,12 @@ export interface KansokuClient {
 export interface TrackOptions { schemaVersion?: number; occurredAt?: Date; context?: JsonObject }
 export interface ExperimentOptions { force?: boolean }   // bypass per-session exposure dedupe
 export type IdentifierKind = "cookie" | "device" | "fingerprint" | "email_sha256"
-// Every option resolved to its default; callbacks, fetch/now/timers, and cookieDomain stay optional.
-export type ResolvedKansokuOptions = Required<Omit<KansokuOptions,
-  "beforeSend" | "onDrop" | "fetch" | "now" | "timers" | "cookieDomain">>
-  & Pick<KansokuOptions, "beforeSend" | "onDrop" | "fetch" | "now" | "timers" | "cookieDomain">
+// Every option resolved to its default (fetch, now, and timers resolve to the platform globals);
+// the callbacks and cookieDomain stay optional. Frozen at construction.
+export type ResolvedKansokuOptions = Readonly<
+  Required<Omit<KansokuOptions, "beforeSend" | "onDrop" | "cookieDomain">>
+  & Pick<KansokuOptions, "beforeSend" | "onDrop" | "cookieDomain">
+>
 ```
 
 Two entry points are internal to the package and are how EP-3 feeds capture events into EP-2's
@@ -398,12 +435,36 @@ store for that one event (only EP-3's `alias` uses it); and
 enqueue, and the flush-threshold check. The same internal object offers two registration hooks:
 `registerContextProvider(fn: () => JsonObject): () => void`, whose providers are consulted when
 an event is constructed and merged into `context` beneath the caller's `TrackOptions.context`
-(EP-3's context module registers the browser provider), and `onShutdown(fn: () => void)`, whose
-callbacks run at the start of `shutdown()` before the final flush (EP-3 unpatches the History
-API there). None of these is exported from `src/index.ts`. `stats.dropped` counts every drop
-including rejections, matching the Haskell client's `droppedCount`; `stats.rejected` is the
-subset reported by the server. EP-2 stores `respectDoNotTrack` in the resolved config; EP-3
-implements the gate, reusing EP-2's `opted_out` drop path.
+(EP-3's context module registers the browser provider), and
+`onStart(install: () => (() => void) | void): void`, which registers an installer that `start()`
+runs on every activation and whose returned teardown `stop()` runs on every deactivation (EP-3
+registers one installer that records the initial page view and patches the History API, and
+whose teardown unpatches it). None of these is exported from `src/index.ts`. `stats.dropped`
+counts every drop including rejections, matching the Haskell client's `droppedCount`;
+`stats.rejected` is the subset reported by the server. EP-2 stores `respectDoNotTrack` and
+`respectGlobalPrivacyControl` in the resolved config; EP-3 implements both gates, reusing EP-2's
+`opted_out` drop path.
+
+**Client lifecycle** (owner EP-2; EP-3 registers its installer through `onStart`; EP-4 is the
+consumer that needs it to be reversible). Construction (`createKansoku`) is free of observable
+side effects beyond reading and lazily initialising persisted state: it resolves options,
+creates the storage adapters, loads or generates the anonymous identifier, reads the session,
+and restores the persisted queue, but attaches no listeners, starts no timer, patches nothing,
+and records no event. `start()` activates the client: it attaches the exit-flush listeners,
+starts the flush interval, and runs every `onStart` installer (in EP-3: the initial page view and
+the History API patch). `stop()` is the exact inverse: it runs the installers' teardowns in
+reverse order, detaches the listeners, clears the interval, and begins a non-blocking `flush()`
+so nothing queued is stranded; identity, session, the queue, and the page-view dedupe key are
+kept, so `start()` after `stop()` resumes without re-recording the current page. Both are
+idempotent. `shutdown()` is `stop()` followed by an awaited final `flush()`, after which the
+client refuses new events (`track` drops with reason `opted_out`, detail `shutdown`) and
+`start()` is a no-op. `createKansoku` calls `start()` itself unless `autoStart` is `false`, so a
+vanilla page keeps its one-call setup. This is what makes `KansokuProvider` correct under React
+StrictMode without a workaround: the provider constructs the client with `autoStart: false` in a
+lazy state initialiser and calls `start()` in its effect and `stop()` in the cleanup, which is
+the same reversible `mount`/`unmount` shape TanStack Query's `QueryClientProvider` uses, and the
+development-only setup → cleanup → setup sequence simply restarts the client. (ADR: delivery
+semantics and exit transport, extended with the lifecycle.)
 
 **Event envelope rules** (owner EP-2; EP-3 builds every capture event through the same
 builder). `eventId` is `crypto.randomUUID()` with a fallback random string; `eventName` as
@@ -435,27 +496,40 @@ network error, a timeout, and any response that cannot be parsed are retried up 
 with exponential backoff and full jitter; the batch stays queued between attempts and is dropped
 with reason `retries_exhausted` afterwards. Only one flush is in flight at a time. After
 `shutdown()` resolves, later `track` calls are dropped (reason `opted_out`, detail `shutdown`)
-rather than queued. On `visibilitychange` to `hidden` and on `pagehide`, the
-client flushes everything queued using `fetch(..., { keepalive: true })` in chunks of at most
-60 KiB of body each; `navigator.sendBeacon` is not used because it cannot carry the credential
-header. When `persistQueue` is on, the pending queue is written to storage after every enqueue
-and acknowledgement and restored on the next `createKansoku`, so an unacknowledged exit flush is
-retried with the same `eventId` values and deduplicated by the server. (ADR: delivery semantics
-and exit transport.)
+rather than queued. While the client is started, on `visibilitychange` to `hidden` and on
+`pagehide` it flushes everything queued using `fetch(..., { keepalive: true })` in chunks of at
+most 60 KiB of body each; `navigator.sendBeacon` is not used because it cannot carry the
+credential header. When `persistQueue` is on, the pending queue is mirrored to the tab's
+`sessionStorage` after every enqueue and acknowledgement and restored by the next
+`createKansoku` in that tab, so an unacknowledged exit flush during a reload or a same-tab
+navigation is retried with the same `eventId` values and deduplicated by the server.
+`sessionStorage` rather than `localStorage` is deliberate: `localStorage` is shared by every tab
+of the origin, so two tabs writing the same queue key clobber each other's pending events and
+both replay the other's; a per-tab mirror cannot. Events in a tab that is closed while its
+keepalive request fails are lost, which is the same trade every reference SDK makes. (ADR:
+delivery semantics and exit transport.)
 
-**Storage keys and persistence format** (owner EP-2; EP-3's `reset` and EP-4 rely on it). With
-the default prefix, keys are `kansoku.anonymous_id`, `kansoku.user_id`, `kansoku.identifiers`,
-`kansoku.organization_id`, `kansoku.session` (JSON `{ "id": string, "lastActivityAt": number }`),
-`kansoku.queue` (JSON array of pending `AnalyticsEvent`, capped at `maxQueueSize`),
-`kansoku.opt_out`, and `kansoku.exposures` (EP-3). The storage adapter falls back from
-`localStorage` to memory when access throws (private mode, blocked storage). `reset()` clears
-`user_id`, `identifiers`, `organization_id`, and `exposures`, rotates `anonymous_id` and the
-session, and leaves the queue intact. (ADR: identity and session persistence policy.)
+**Storage keys and persistence format** (owner EP-2; EP-3's `reset` and EP-5's smoke test rely
+on it). Identity and session state live in the adapter the `storage` option selects
+(`localStorage` by default, shared across the origin's tabs, which is what an anonymous
+identifier and a session need). With the default prefix, those keys are `kansoku.anonymous_id`,
+`kansoku.user_id`, `kansoku.identifiers`, `kansoku.organization_id`, `kansoku.session` (JSON
+`{ "id": string, "lastActivityAt": number }`), `kansoku.opt_out`, and `kansoku.exposures`
+(EP-3). The pending queue is different: `kansoku.queue` (JSON array of pending `AnalyticsEvent`,
+capped at `maxQueueSize`) is always mirrored to `sessionStorage`, which is per tab, regardless of
+the `storage` option, for the reason given under Delivery contract. Both the selected adapter
+and the session adapter fall back to memory when access throws (private mode, blocked storage).
+`reset()` clears `user_id`, `identifiers`, `organization_id`, and `exposures`, rotates
+`anonymous_id` and the session, and leaves the queue intact. (ADR: identity and session
+persistence policy.)
 
 **Autocapture versus manual page views** (owner EP-3 for the option; EP-4 consumes).
-`autocapture.pageViews` defaults to true and covers SPA navigation by patching
-`history.pushState` and `history.replaceState` and listening to `popstate`, so React Router and
-similar routers are covered with no React-specific code. EP-4's `usePageView(key)` is for
+`autocapture.pageViews` defaults to true: `start()` records the initial page view and installs
+the History API patch (`history.pushState`, `history.replaceState`, and the `popstate` event),
+so React Router and similar routers are covered with no React-specific code, and `stop()`
+removes the patch. Because the React provider starts the client from an effect, the initial
+`page_view` is recorded after the first paint, when `document.title` is already set, and the
+dedupe key makes the StrictMode restart record nothing extra. EP-4's `usePageView(key)` is for
 applications that want explicit control; it expects the application to pass
 `autocapture.pageViews: false` and warns once in development, by reading `client.config`, when
 autocapture is still on. The warning is advisory, not enforced, so a misconfigured app
@@ -466,6 +540,17 @@ double-counts rather than losing data. `KansokuProvider` does not change `kansok
 `experiment_viewed` version 1, and records the pair in `kansoku.exposures` for the current
 session so repeated calls (including React StrictMode double effects) emit once per session.
 An `{ force: true }` option bypasses the dedupe.
+
+**Privacy signals** (owner EP-3 for the gate; EP-2 resolves the options; EP-6 documents them).
+Two opt-in options honour browser privacy signals, both default `false` so an application makes
+the choice knowingly: `respectDoNotTrack` suppresses capture when `navigator.doNotTrack` (or the
+legacy `window.doNotTrack` / `navigator.msDoNotTrack`) is `"1"`, and `respectGlobalPrivacyControl`
+suppresses capture when `navigator.globalPrivacyControl` is `true`. Global Privacy Control is
+the signal browsers now promote (Firefox removed its Do Not Track setting in version 135 and
+exposes GPC instead; Brave and DuckDuckGo send GPC by default; Chrome and Safari expose neither
+property, in which case both reads are `undefined` and nothing is suppressed). Suppression
+reuses the opt-out path: autocaptured events are skipped silently and explicit calls drop with
+reason `opted_out`. The SDK never sets or changes either signal.
 
 **Test harness** (owner EP-1; used by EP-2, EP-3, EP-4, EP-5). `bunfig.toml` preloads
 `test/setup/dom.ts`, which registers happy-dom globals through
@@ -486,7 +571,10 @@ the same harness.
 `examples/react-vite` are workspace members that consume `kansoku-js` and `kansoku-react`
 through their published export maps, which resolve to `dist/`; the example and smoke recipes
 therefore run `just build` first and never alias to package sources. The React example uses
-React Router 8 under StrictMode so autocapture is proven against a real router.
+React Router 8 under StrictMode so autocapture is proven against a real router and the
+provider's `start`/`stop` lifecycle is proven against StrictMode's extra effect cycle in a real
+browser. The Chromium smoke test reads the queue mirror from `sessionStorage` (not
+`localStorage`), matching the storage-keys point above.
 
 **Live conformance environment** (owner EP-5; referenced by EP-6 documentation). The opt-in
 suite under `test/live/` reads `KANSOKU_LIVE_BASE_URL` and `KANSOKU_LIVE_WRITE_KEY`, optionally
@@ -541,7 +629,11 @@ by navigating away and asserting the server-side mock received the final batch.
 
 Planning complete on 2026-10-14. Mori project `shinzui/kansoku-ts` is registered with both
 packages declared; rei intention `intention_01m4ymqn7xe1a8tz8v7r78e34y` is attached to this
-MasterPlan and every child. No child plan has started; EP-1 is the only eligible plan.
+MasterPlan and every child. No child plan has started; EP-1 is the only eligible plan. A
+best-practices review on 2026-10-14 (reference analytics SDKs and current React library
+conventions) revised the client lifecycle, privacy signals, queue persistence, and React
+provider design across the MasterPlan and all six children before implementation began; the
+revision note at the end of the Decision Log summarises it.
 
 Cross-plan gates not represented by a single child plan:
 
@@ -583,6 +675,39 @@ Cross-plan gates not represented by a single child plan:
   existing package's page, so the first publish of a new name is manual; `npm publish` does not
   rewrite `workspace:` ranges and `bun publish` cannot attach provenance, which forces a literal
   peer range on `kansoku-react`. All three now shape EP-6 and the Versioning and release point.
+- Discovery (review, 2026-10-14): the first draft of EP-4 made `KansokuProvider` construct a
+  side-effecting client during render and survive React StrictMode's extra effect cycle by
+  deferring `shutdown()` to a cancellable timer, a workaround the plan itself flagged as a
+  flakiness risk. React's rule that effect setup and cleanup must be symmetric, and TanStack
+  Query's `QueryClientProvider` precedent (`client.mount()` in the effect, `client.unmount()` in
+  the cleanup), pointed at the fix: give `KansokuClient` a reversible `start`/`stop` pair and an
+  `autoStart` option, and move the History patch and the initial page view behind the internal
+  `onStart` installer hook that replaces `onShutdown`. The change touches EP-2, EP-3, and EP-4
+  but removes the only non-deterministic design in the initiative.
+- Discovery (review, 2026-10-14): `respectDoNotTrack` alone is an outdated privacy gate. Firefox
+  removed the Do Not Track setting in version 135 (February 2025) and points users to Global
+  Privacy Control, which Brave and DuckDuckGo send by default and which carries legal weight in
+  several jurisdictions. `respectGlobalPrivacyControl` was added beside it; both stay opt-in.
+- Discovery (review, 2026-10-14): mirroring the pending queue to `localStorage` is unsafe with
+  more than one tab open, because every tab writes the same key and clobbers the others' pending
+  events while also replaying them. The mirror now lives in `sessionStorage`, which is per tab
+  and still survives reloads and same-tab navigations; identity and session state stay in the
+  shared adapter because they must be shared.
+- Discovery (review, 2026-10-14): `@types/react` 19 removed the global `JSX` namespace, so the
+  `JSX.Element` return type the EP-4 draft used does not compile against the pinned types;
+  `ReactElement` from `react` is used instead. The same pass aligned three inconsistent copies of
+  the React peer range (`>=18`, `^18.0.0 || ^19.0.0`, `^18 || ^19`) to `^18.0.0 || ^19.0.0`,
+  aligned `ResolvedKansokuOptions` between this document and EP-2 (`fetch`, `now`, and `timers`
+  resolve to the globals and are required in the resolved type), and corrected EP-5's claim that
+  `useKansoku()` returns `null` during server rendering (it returns the no-op client).
+- Discovery (review, 2026-10-14, after the ESM-only decision): the `"use client"` banner is still
+  needed with a single ESM output. A fresh `Bun.build` 1.4.2 experiment on a module with an
+  external `react` import showed the bundler emitting the hoisted `import` statement before the
+  source-level `"use client"` string, which demotes it to an inert expression; with
+  `banner: "\"use client\";"` the directive is line 1 and the now-redundant source directive
+  follows harmlessly. The planning-time claim that ESM output needed no banner was made on a
+  module with no external imports. The dev shell's Node 22 `require()`s an ES module directly,
+  which is the CommonJS path the ESM-only packages rely on.
 
 
 ## Decision Log
@@ -649,6 +774,72 @@ Cross-plan gates not represented by a single child plan:
   Rationale: Service tokens must not ship in browsers; the other items have no consumer yet and
   each is its own initiative. Server gaps are handed off, not fixed here.
   Date: 2026-10-14
+
+- Decision: `KansokuClient` exposes a reversible lifecycle, `start()` and `stop()`, plus an
+  `autoStart` option (default `true`); `shutdown()` is `stop()` followed by an awaited final
+  flush and a terminal state. Construction has no observable side effects beyond initialising
+  persisted state. The internal `onStart(install)` hook replaces the earlier `onShutdown(fn)`.
+  Rationale: React requires effect setup and cleanup to be symmetric and runs an extra cycle in
+  StrictMode; a one-way `shutdown()` forced the React provider into a timing workaround. A
+  reversible pair is the pattern TanStack Query's provider established, costs `kansoku-js` two
+  idempotent methods, keeps the vanilla one-call setup, and gives applications a way to pause
+  capture without losing state.
+  Date: 2026-10-14
+
+- Decision: Add `respectGlobalPrivacyControl` beside `respectDoNotTrack`, both opt-in and both
+  routed through the same suppression path.
+  Rationale: Global Privacy Control is the signal browsers ship and regulators recognise in
+  2026; Do Not Track is kept for the users who still send it. Defaults stay `false` so an
+  application decides its own policy, as the reference SDKs do.
+  Date: 2026-10-14
+
+- Decision: The pending-queue mirror lives in `sessionStorage` (per tab, memory fallback)
+  regardless of the `storage` option; identity, session, opt-out, and exposure state live in
+  the selected adapter (`localStorage` by default).
+  Rationale: A shared mirror is clobbered and replayed by concurrent tabs; a per-tab mirror still
+  covers the exit-flush failure modes that matter (reload, same-tab navigation). Identity must be
+  shared across tabs, so it keeps the shared adapter.
+  Date: 2026-10-14
+
+- Decision (superseded the same day by the ESM-only decision below): Keep publishing both ESM and
+  CommonJS for `0.1.0`, document the dual-package hazard for `kansoku-react`'s context object in
+  its README, and revisit ESM-only before `1.0.0`.
+  Rationale: Every supported Node release can now `require()` an ES module, which makes ESM-only
+  the simpler shape for new libraries, but Jest-based consumers still need CommonJS without extra
+  transform configuration, and the Vision promised both formats. The hazard only bites an
+  application that loads the package through both conditions at once; `publint` and
+  `@arethetypeswrong/cli` guard the export map either way. Dropping CommonJS is a scope change
+  for the maintainer to make deliberately.
+  Date: 2026-10-14
+
+- Decision: Publish both packages as ESM-only. One `Bun.build` output (`dist/index.js`), one
+  declaration file set (`dist/index.d.ts`), an export map with `types` and `default` conditions
+  only, `main` and `types` kept for legacy resolvers, `module` dropped, and
+  `"engines": { "node": ">=20.19.0" }` as the `require(esm)` floor. The `"use client"` banner
+  mechanism stays because Bun hoists external imports above a source-level directive in ESM
+  output too. `@arethetypeswrong/cli` runs with `--profile esm-only`.
+  Rationale: The maintainer chose ESM-only on 2026-10-14 after the review. Node 20 reached end
+  of life in April 2026 and every supported Node release loads ES modules through `require()`,
+  so the only consumer that loses anything is Jest in its default CommonJS mode, which already
+  needs a transform allowlist for most modern packages. In exchange the build has one output, the
+  type declarations have one shape, the dual-package hazard for the React context disappears, and
+  the bundlers, Vite examples, Playwright smoke test, and Bun test harness in this initiative all
+  consume ESM natively. Supersedes the dual-format decision above.
+  Date: 2026-10-14
+
+Revision note (2026-10-14): a best-practices review before implementation changed the
+`kansoku-js` lifecycle (reversible `start`/`stop`, `autoStart`, `onStart` installer hook),
+added `respectGlobalPrivacyControl`, moved the queue mirror to `sessionStorage`, redesigned
+`KansokuProvider` to drive the lifecycle from an effect with a memoised context value and
+`ReactElement` typing, added `@types/react` as an optional peer, unified the React peer range,
+and reconciled three cross-plan inconsistencies. The decomposition, registry, dependency graph,
+and milestone gates are unchanged; EP-1 through EP-6 carry the cascaded edits.
+
+Revision note (2026-10-14, later the same day): the maintainer chose ESM-only publishing. The
+Vision, terms, Workspace layout integration point, Surprises & Discoveries, and Decision Log were
+updated; EP-1 (build script, manifests, acceptance), EP-2 (build outputs), EP-4 (build
+acceptance, banner rationale, README notes), and EP-6 (`attw` profile, tarball listing, README
+and ADR content) carry the cascade. EP-3 and EP-5 had no module-format content to change.
 
 
 ## Outcomes & Retrospective

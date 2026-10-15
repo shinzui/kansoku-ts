@@ -11,6 +11,12 @@ provenance:
     model: "claude-fable-5-1"
     harness: "claude-code"
     at: 2026-10-15T02:11:18Z
+  revisions:
+    - model: "claude-fable-5-1"
+      harness: "claude-code"
+      at: 2026-10-15T03:17:45Z
+      mode: "update"
+      note: "Bind initial page view and History patch to start/stop via onStart, add Global Privacy Control gate"
 ---
 
 # kansoku-js browser capture: page views, navigation, attribution, identity helpers, and experiments
@@ -66,15 +72,18 @@ build directly on the surface this plan adds.
   shape shown in Validation and Acceptance.
 - [ ] Milestone 2 — single-page navigation produces page views: `history.pushState`,
   `history.replaceState`, and `popstate` each yield a deduplicated `page_view`, the patch is
-  removed on `shutdown()`, and `autocapture.pageViews` / `autocapture.sessions` switches work.
+  installed by `start()` and removed by `stop()` (and therefore by `shutdown()`), a client
+  created with `autoStart: false` records nothing until `start()`, and the
+  `autocapture.pageViews` / `autocapture.sessions` switches work.
   Accepted when `bun test packages/kansoku-js/test/navigation.test.ts` passes and the
   happy-dom script in Validation and Acceptance prints two page views.
 - [ ] Milestone 3 — identity API: `identify`, `alias`, `group`, `setIdentifiers`, and `reset`
   emit the exact shapes of the Haskell SDK helpers, validate inputs client-side, and persist
   state under the agreed storage keys. Accepted when `bun test
   packages/kansoku-js/test/identity-api.test.ts` passes.
-- [ ] Milestone 4 — `experiment()` with validation and per-session dedupe, Do Not Track and
-  opt-out gating of all capture, server-side-rendering import safety, README API
+- [ ] Milestone 4 — `experiment()` with validation and per-session dedupe, Global Privacy
+  Control, Do Not Track, and opt-out gating of all capture, server-side-rendering import
+  safety, README API
   documentation, and ADR updates. Accepted when `bun test packages/kansoku-js` passes in
   full, `bun run scripts/ssr-smoke.ts` prints `ssr-smoke: ok`, `just check` passes, and
   `okf validate docs/adr --strict --profile docs/adr/profile.dhall --profile-enforce
@@ -88,8 +97,9 @@ build directly on the surface this plan adds.
 
 ## Decision Log
 
-- Decision: Autocaptured events are skipped silently when the client is opted out (or Do Not
-  Track is honoured), while explicit calls (`track`, `page`, `identify`, …) made while opted
+- Decision: Autocaptured events are skipped silently when the client is opted out (or an
+  honoured privacy signal, Global Privacy Control or Do Not Track, is set), while explicit
+  calls (`track`, `page`, `identify`, …) made while opted
   out continue to go through the delivery engine's existing drop path with reason
   `opted_out`.
   Rationale: An application that opts out should not receive one `onDrop` callback per
@@ -122,6 +132,25 @@ build directly on the surface this plan adds.
   from `userAgent`; the default must be safe to deploy without a privacy review of the SDK.
   Date: 2026-10-14
 
+- Decision: The initial page view and the History API patch are installed through the delivery
+  engine's internal `onStart` hook, so `start()` installs them and `stop()` removes them, instead
+  of running at the end of `createKansoku` and being torn down only by `shutdown()`.
+  Rationale: The second plan's lifecycle is reversible (`start`/`stop`, with `autoStart`) so the
+  React provider can drive it from an effect; capture must follow the same lifecycle or a stopped
+  client would keep recording page views. The dedupe key survives `stop()`, so a restart on the
+  same URL records nothing extra, which is what React StrictMode's extra cycle requires.
+  Date: 2026-10-14
+
+- Decision: Honour Global Privacy Control (`navigator.globalPrivacyControl === true`) behind
+  `respectGlobalPrivacyControl`, beside Do Not Track behind `respectDoNotTrack`; both default
+  to `false` and share one suppression path.
+  Rationale: Firefox removed its Do Not Track setting in version 135 and points users to Global
+  Privacy Control, which Brave and DuckDuckGo send by default and which has legal force in
+  several jurisdictions; an SDK shipped in 2026 with only a Do Not Track gate would be honouring
+  the wrong signal. Defaults stay opt-in because the reference SDKs leave the policy to the
+  application.
+  Date: 2026-10-14
+
 
 ## Outcomes & Retrospective
 
@@ -147,8 +176,8 @@ being Complete, which means the following already exists in the working tree whe
 - `packages/kansoku-js/src/types.ts` declaring `KansokuOptions`, `KansokuClient`,
   `TrackOptions`, `DropInfo`, `DropReason`, `JsonObject`, and `IdentifierKind`.
 - `packages/kansoku-js/src/client.ts` implementing `createKansoku` with `track`, `flush`,
-  `shutdown`, `optOut`, `optIn`, `isOptedOut`, `getAnonymousId`, `getUserId`,
-  `getSessionId`, `stats`, and `config`.
+  `start`, `stop`, `shutdown`, `optOut`, `optIn`, `isOptedOut`, `getAnonymousId`, `getUserId`,
+  `getSessionId`, `stats`, and `config`, and the `autoStart` option.
 - `packages/kansoku-js/src/envelope.ts` (builds an `AnalyticsEvent` from a name, properties,
   and options), `src/queue.ts`, `src/transport.ts`, `src/retry.ts`, `src/storage.ts`,
   `src/identity.ts`, `src/session.ts`, `src/lifecycle.ts`, `src/contract/wire.ts`,
@@ -190,9 +219,19 @@ develop`, or automatically via direnv). The shell provides `bun` 1.4.2, `tsc` 7.
 - **Context**: the `context` object every Kansoku event carries, describing the environment
   the event came from (locale, time zone, screen) as opposed to `properties`, which describe
   the event itself.
-- **Do Not Track (DNT)**: a browser preference exposed as `navigator.doNotTrack` (the string
-  `"1"` when enabled). Browsers no longer promote it, but some users still set it; honouring
-  it is opt-in through `respectDoNotTrack`.
+- **Do Not Track (DNT)**: a legacy browser preference exposed as `navigator.doNotTrack` (the
+  string `"1"` when enabled). Firefox removed the setting in version 135 (February 2025) and
+  Chrome and Safari never exposed the property; some users still send it through other means,
+  so honouring it is opt-in through `respectDoNotTrack`.
+- **Global Privacy Control (GPC)**: the privacy signal browsers now promote, exposed as
+  `navigator.globalPrivacyControl` (`true` when the user has asked sites not to sell or share
+  their data). Firefox, Brave, and DuckDuckGo expose it; Chrome and Safari do not, so the
+  property is `undefined` there. It carries legal weight in several jurisdictions. Honouring it
+  is opt-in through `respectGlobalPrivacyControl`.
+- **Started / stopped**: the two states of a constructed client, moved between by the idempotent
+  `start()` and `stop()` methods the second plan added. Only a started client has its exit-flush
+  listeners, flush interval, and (after this plan) History API patch active; `createKansoku`
+  starts the client itself unless `autoStart: false` is passed.
 - **Identity signal**: evidence that ties an anonymous visitor to a known user. Kansoku
   accepts the implicit cookie signal (`anonymousId`) plus an optional `identifiers` object
   whose keys are exactly `cookie`, `device`, `fingerprint`, and `email_sha256` and whose
@@ -215,6 +254,7 @@ export interface KansokuOptions {
   baseUrl: string
   writeKey: string
   sourceService?: string
+  autoStart?: boolean                                          // EP-2; default true
   flushAt?: number
   flushIntervalMs?: number
   maxQueueSize?: number
@@ -232,6 +272,7 @@ export interface KansokuOptions {
   autocapture?: { pageViews?: boolean; sessions?: boolean }   // EP-3 adds pageViews handling
   optOut?: boolean
   respectDoNotTrack?: boolean                                  // EP-3 implements the gate
+  respectGlobalPrivacyControl?: boolean                        // EP-3 implements the gate
   beforeSend?: (event: AnalyticsEvent) => AnalyticsEvent | null
   onDrop?: (info: DropInfo) => void
   fetch?: typeof globalThis.fetch
@@ -244,6 +285,8 @@ export interface KansokuClient {
   // EP-2
   track(eventName: string, properties?: JsonObject, options?: TrackOptions): void
   flush(): Promise<void>
+  start(): void
+  stop(): void
   shutdown(): Promise<void>
   optOut(): void
   optIn(): void
@@ -252,7 +295,7 @@ export interface KansokuClient {
   getUserId(): string | undefined
   getSessionId(): string
   readonly stats: Readonly<{ queued: number; accepted: number; rejected: number; dropped: number }>
-  readonly config: Readonly<ResolvedKansokuOptions>
+  readonly config: ResolvedKansokuOptions
   // EP-3 (this plan)
   page(properties?: JsonObject, options?: TrackOptions): void
   identify(userId: string, traits?: JsonObject): void
@@ -290,13 +333,16 @@ internal interface between the two plans; use them exactly as written.
   `enqueueBuilt(event)` — which runs validation, `beforeSend`, the enqueue, and the
   flush-threshold check for an already-built event — `registerContextProvider(fn: () =>
   JsonObject): () => void`, which registers a function whose result `buildEvent` merges into
-  every event's `context` (the returned function unregisters it), and `onShutdown(fn: () =>
-  void): void`, which registers a callback that `shutdown()` runs. The public `track(name,
+  every event's `context` (the returned function unregisters it), and `onStart(install: () =>
+  (() => void) | void): void`, which registers an installer that `start()` runs on every
+  activation and whose returned teardown `stop()` runs on every deactivation (an installer
+  registered while the client is already started runs immediately). The public `track(name,
   properties, options)` is `buildEvent` followed by `enqueueBuilt` behind the opt-out check.
   Every capture feature in this plan calls `buildEvent` and then `enqueueBuilt` directly; it
   must not call the public `track()` and must not re-implement validation, `beforeSend`, or
   the threshold check. This plan registers exactly one context provider (Milestone 1) and one
-  shutdown callback for the History API unpatch (Milestone 2). `stats.dropped` counts every
+  `onStart` installer that records the initial page view and installs the History API patch,
+  returning the unpatch function (Milestones 1 and 2). `stats.dropped` counts every
   drop, including server rejections (`stats.rejected` is that subset), so the client-side
   `invalid` drops this plan introduces increment `stats.dropped` only.
 - `src/identity.ts` is the identity store over the storage adapter with `getAnonymousId()`,
@@ -319,12 +365,14 @@ internal interface between the two plans; use them exactly as written.
   printable non-space ASCII), `validateExperimentName(value)` (anchored
   `^[a-z0-9_.:-]{1,128}$`), and `validateSchemaVersion(n)` (`1..65535`), each returning a
   list of human-readable problems (empty when valid).
-- `src/lifecycle.ts` installs the `visibilitychange` and `pagehide` exit-flush listeners and
-  removes them on shutdown.
+- `src/lifecycle.ts` installs the `visibilitychange` and `pagehide` exit-flush listeners when
+  the client starts and removes them when it stops.
 
-Storage keys, with the default prefix `kansoku`: `kansoku.anonymous_id`, `kansoku.user_id`,
-`kansoku.identifiers`, `kansoku.organization_id`, `kansoku.session` (JSON `{ "id", "lastActivityAt" }`),
-`kansoku.queue`, `kansoku.opt_out`, and, new in this plan, `kansoku.exposures`.
+Storage keys, with the default prefix `kansoku`, in the adapter the `storage` option selects:
+`kansoku.anonymous_id`, `kansoku.user_id`, `kansoku.identifiers`, `kansoku.organization_id`,
+`kansoku.session` (JSON `{ "id", "lastActivityAt" }`), `kansoku.opt_out`, and, new in this
+plan, `kansoku.exposures`. The queue mirror `kansoku.queue` lives in `sessionStorage` (per tab)
+and this plan never touches it.
 
 Module ownership for this plan: it creates `packages/kansoku-js/src/page.ts`,
 `src/navigation.ts`, `src/attribution.ts`, `src/context.ts`, `src/experiment.ts`, and
@@ -338,7 +386,8 @@ Local ADRs live in `docs/adr/`, a profile-governed bundle installed by the first
 filenames and read the record the second plan created for identity and session persistence
 (its title contains "identity and session persistence"); this plan updates that record with
 the `reset()` and exposures semantics and creates one new record, "Browser capture defaults",
-recording the autocapture behaviour, the context fields, and the no-personal-data default. The
+recording the autocapture behaviour and its binding to the `start`/`stop` lifecycle, the
+context fields, the two opt-in privacy signals, and the no-personal-data default. The
 other records in the bundle are not needed to implement this plan.
 
 The server's own decisions are cited by the canonical handles Mori returns for the bundle
@@ -412,10 +461,10 @@ function (never at module scope) read `navigator.language` into `locale`,
 `navigator.userAgent` into `userAgent`, and set `library` to `{ name: "kansoku-js", version }`.
 Wrap each read in a guard so a missing global or a throwing getter simply omits that field; the
 function must return `{ library }` at minimum under SSR. In `createKansoku`, call
-`registerContextProvider(() => collectContext(version))` once and pass the returned unregister
-function to `onShutdown`, so that `buildEvent` produces the final `context` as
-`{ ...providedContext, ...(options?.context ?? {}) }` and `TrackOptions.context` wins on
-conflicts for `track()` and every capture method alike.
+`registerContextProvider(() => collectContext(version))` once at construction (providers are
+not lifecycle-bound; the unregister function is not needed), so that `buildEvent` produces the
+final `context` as `{ ...providedContext, ...(options?.context ?? {}) }` and
+`TrackOptions.context` wins on conflicts for `track()` and every capture method alike.
 
 Create `src/page.ts` with `buildPageView(client, properties, options)` returning the
 `AnalyticsEvent` for the current page: it calls `readAttribution(location, document.referrer)`,
@@ -424,11 +473,15 @@ sets `properties` to `{ url, path: location.pathname, title: document.title, ...
 `schemaVersions` (built-in 1) unless `options.schemaVersion` is given, and calls
 `buildEvent("page_view", properties, options, webFields)` with the attribution result as the
 `webFields` argument. Add `page(properties, options)` to the client: it skips with no side
-effect when there is no `document`, otherwise passes the built event to `enqueueBuilt`. At the
-end of `createKansoku`, when
-`autocapture.pageViews` is not `false`, when a `document` exists, and when the client is not
-opted out (see the gating rule in Milestone 4), record the initial page view and remember its
-deduplication key (origin + pathname + search) in the state for Milestone 2.
+effect when there is no `document`, otherwise passes the built event to `enqueueBuilt`. The
+initial page view is recorded by the capture installer this plan registers through the
+internal `onStart` hook (so it runs when the client starts, which for a vanilla page is the end
+of `createKansoku` and for the React provider is its effect): when `autocapture.pageViews` is
+not `false`, when a `document` exists, when the client is not suppressed (see the gating rule in
+Milestone 4), and when the current deduplication key (origin + pathname + search) differs from
+the last recorded one, record the page view and remember the key in the state for Milestone 2.
+The key is kept across `stop()`, so a `stop()`/`start()` cycle on the same URL, which React
+StrictMode performs in development, records nothing extra.
 
 Verification: `bun test packages/kansoku-js/test/page.test.ts
 packages/kansoku-js/test/attribution.test.ts packages/kansoku-js/test/context.test.ts` passes.
@@ -451,9 +504,11 @@ listener that schedules the same call. `onNavigate` computes the deduplication k
 recorded key it records a page view through the Milestone 1 builder and updates the key. A
 hash-only change therefore records nothing. The returned teardown removes the `popstate`
 listener and restores the original methods only if `history.pushState` is still the wrapper
-this client installed (another library may have patched on top; do not clobber it). Register
-the teardown with `onShutdown(teardown)` so `shutdown()` runs it. Install the capture only when
-`autocapture.pageViews` is not `false`.
+this client installed (another library may have patched on top; do not clobber it). The
+installer registered through `onStart` in Milestone 1 calls `installNavigationCapture` after
+recording the initial page view and returns its teardown, so `start()` installs the patch and
+`stop()` (and therefore `shutdown()`) removes it; a second `start()` installs it again. Install
+the capture only when `autocapture.pageViews` is not `false`.
 
 `autocapture.sessions` is implemented by the second plan's session manager; this plan only
 confirms that `createKansoku({ autocapture: { sessions: false } })` suppresses `session_start`
@@ -462,8 +517,12 @@ while still assigning a `sessionId` to every event, and documents both switches 
 Verification: `bun test packages/kansoku-js/test/navigation.test.ts` passes, covering: one
 page view after `pushState`; one page view after `pushState` immediately followed by
 `replaceState` to the same path (dedupe); no page view for a hash-only change; one page view
-after `history.back()`; and `history.pushState === original` after `shutdown()`. The
-happy-dom script in Validation and Acceptance prints two page views.
+after `history.back()`; `history.pushState === original` after `stop()` and after
+`shutdown()`; no page view for a `pushState` made while stopped and one for the next `pushState`
+after `start()`; a client created with `autoStart: false` records no initial page view and
+leaves `history.pushState` untouched until `start()`; and `stop()` then `start()` on the same
+URL records no second initial page view. The happy-dom script in Validation and Acceptance
+prints two page views.
 
 ### Milestone 3 — identity API
 
@@ -524,23 +583,26 @@ the client with the signature
 plan's `useExperiment` calls this method with no options and relies on the default per-session
 dedupe to survive StrictMode's double effects; `force` is for applications only.
 
-Implement the gates in `client.ts`. Add `isDoNotTrackEnabled()` to `src/context.ts`: inside
-the function, return `true` when `navigator.doNotTrack`, `window.doNotTrack`, or
-`navigator.msDoNotTrack` equals `"1"`, `false` otherwise or when the globals are absent. The
-client is "capture-suppressed" when `isOptedOut()` is true or when `respectDoNotTrack` is
-`true` and DNT is enabled. Autocapture (the initial page view and navigation page views) checks
-the suppression at each capture and skips silently; the `installNavigationCapture` patch is
-still installed so that `optIn()` later resumes page views. Explicit methods added by this plan
-perform the same opted-out check that the public `track()` performs before `buildEvent`,
-dropping with reason `opted_out` exactly as `track()` does; extend that shared check so a
-DNT-suppressed client drops explicit events with the same reason. Factor the check into one
-helper in `client.ts` so `track()` and the capture methods cannot diverge.
+Implement the gates in `client.ts`. Add `isDoNotTrackEnabled()` and
+`isGlobalPrivacyControlEnabled()` to `src/context.ts`: inside each function, the first returns
+`true` when `navigator.doNotTrack`, `window.doNotTrack`, or `navigator.msDoNotTrack` equals
+`"1"`, and the second returns `true` when `navigator.globalPrivacyControl === true`; both return
+`false` otherwise or when the globals are absent (Chrome and Safari expose neither property).
+The client is "capture-suppressed" when `isOptedOut()` is true, when `respectDoNotTrack` is
+`true` and DNT is enabled, or when `respectGlobalPrivacyControl` is `true` and GPC is enabled.
+Autocapture (the initial page view and navigation page views) checks the suppression at each
+capture and skips silently; the `installNavigationCapture` patch is still installed so that
+`optIn()` later resumes page views. Explicit methods added by this plan perform the same
+opted-out check that the public `track()` performs before `buildEvent`, dropping with reason
+`opted_out` exactly as `track()` does; extend that shared check so a signal-suppressed client
+drops explicit events with the same reason. Factor the check into one helper in `client.ts` so
+`track()` and the capture methods cannot diverge.
 
 Prove SSR safety with `scripts/ssr-smoke.ts`: it imports `packages/kansoku-js/src/index.ts`
 in a plain `bun run` (which does not apply the test preload, so no DOM globals exist), calls
 `createKansoku({ baseUrl: "http://localhost:0", writeKey: "ksk_w_test", persistQueue: false })`,
-calls `page()`, `identify("u")`, `experiment("exp", "a")`, and `reset()`, awaits `shutdown()`,
-and prints `ssr-smoke: ok` if nothing threw. Add a `just ssr-smoke` recipe that runs it and
+calls `page()`, `identify("u")`, `experiment("exp", "a")`, `stop()`, `start()`, and `reset()`,
+awaits `shutdown()`, and prints `ssr-smoke: ok` if nothing threw. Add a `just ssr-smoke` recipe that runs it and
 include it in `just check`.
 
 Update `packages/kansoku-js/README.md` with sections for page views and autocapture (including
@@ -548,8 +610,10 @@ how to disable autocapture and call `page()` manually, and the note that the ini
 is recorded at `createKansoku`, so initialise after the `<title>` element or pass
 `properties.title`), attribution, context, identity (`identify`, `alias`, `group`,
 `setIdentifiers`, `reset`, with the server's identifier rules), experiments (exposure
-semantics, dedupe, `force`), and privacy (`optOut`, `respectDoNotTrack`, what context is and is
-not collected).
+semantics, dedupe, `force`), privacy (`optOut`, `respectGlobalPrivacyControl`,
+`respectDoNotTrack`, what context is and is not collected), and the lifecycle as it affects
+capture (`autoStart: false` defers the initial page view and the History patch to `start()`;
+`stop()` removes the patch).
 
 Record decisions in `docs/adr/`. Allocate the next handle with `okf id next docs/adr --profile
 docs/adr/profile.dhall ADR`, create `docs/adr/<N>-browser-capture-defaults.md` following the
@@ -666,6 +730,8 @@ const client = createKansoku({ baseUrl: "http://localhost:0", writeKey: "ksk_w_t
 client.page()
 client.identify("u_1")
 client.experiment("exp", "a")
+client.stop()
+client.start()
 client.reset()
 await client.shutdown()
 console.log("ssr-smoke: ok")
@@ -817,11 +883,23 @@ Gating. With `optOut: true`, `createKansoku` records no initial page view and `p
 records nothing, while `track("x")` produces `onDrop` with reason `opted_out`; after
 `optIn()`, the next `pushState` records a page view. With `respectDoNotTrack: true` and
 `navigator.doNotTrack` stubbed to `"1"`, behaviour is identical to opt-out; with the default
-`respectDoNotTrack: false` the same stub has no effect.
+`respectDoNotTrack: false` the same stub has no effect. With `respectGlobalPrivacyControl: true`
+and `navigator.globalPrivacyControl` stubbed to `true` (define it with
+`Object.defineProperty(navigator, "globalPrivacyControl", { value: true, configurable: true })`,
+since happy-dom does not implement the property), behaviour is identical to opt-out; with the
+default `false` the same stub has no effect.
+
+Lifecycle. `createKansoku({ autoStart: false })` records nothing and leaves `history.pushState`
+untouched; `start()` records the initial page view and installs the patch; `stop()` restores
+`history.pushState` and a subsequent `pushState` records nothing; `start()` again records no
+second initial page view for the same URL and the next `pushState` records one.
 
 Proposals that are not required acceptance: capturing `hashchange` as page views behind an
-option, honouring Global Privacy Control, and attaching `document.referrer` only on the first
-page view of a session. Each is a scope change for the MasterPlan to decide.
+option; attaching `document.referrer` only on the first page view of a session; and using the
+Navigation API (`window.navigation` and its `currententrychange` event) instead of patching
+`history.pushState` where the browser provides it, which avoids monkey-patching but is not yet
+available in every evergreen browser and is absent from happy-dom. Each is a scope change for
+the MasterPlan to decide.
 
 
 ## Idempotence and Recovery
@@ -829,7 +907,7 @@ page view of a session. Each is a scope change for the MasterPlan to decide.
 Every step is additive and repeatable. Re-running the tests, the smoke script, the build, and
 the ADR validation has no side effects. This plan does not change `src/envelope.ts`; every
 capture module calls `buildEvent(name, properties, options, webFields?, ids?)` (the `ids`
-argument for `alias`) and `enqueueBuilt`, `registerContextProvider`, and `onShutdown` by name.
+argument for `alias`) and `enqueueBuilt`, `registerContextProvider`, and `onStart` by name.
 If a second-plan test fails after this plan's edits to `client.ts`, the shared opt-out helper
 is the likely cause; keep `track()`'s observable behaviour identical and
 re-run `bun test packages/kansoku-js`. If happy-dom does not fire `popstate` for `history.back()` in the
@@ -847,7 +925,8 @@ Prerequisite: the second plan,
 is Complete in the MasterPlan registry. Its `buildEvent(name, properties, options, webFields?)`
 in `src/envelope.ts` (with the explicit `ids` argument `alias` uses), and on the internal
 client object `enqueueBuilt(event)`, `registerContextProvider(fn): () => void`, and
-`onShutdown(fn)`, plus the identity store, the session manager (session persisted as
+`onStart(install)`, plus the public `start()`, `stop()`, and `autoStart`, the identity store,
+the session manager (session persisted as
 `{ id, lastActivityAt }` under `kansoku.session`), the storage adapter, the constants and
 validators, and `ResolvedKansokuOptions` in `src/types.ts`, are the internal interfaces this
 plan depends on; `stats.dropped` includes rejections. The first plan's test harness
@@ -865,7 +944,11 @@ Interfaces other plans depend on: the `KansokuClient` members `page`, `identify`
 `group`, `experiment`, `setIdentifiers`, and `reset`, and the `ExperimentOptions` type, all
 exported from `packages/kansoku-js/src/index.ts`; the `autocapture.pageViews` option and its
 value in `client.config`, which the React plan reads to warn when `usePageView` is used while
-autocapture is still on; the per-session exposure dedupe under `kansoku.exposures`, which the
+autocapture is still on; the guarantee that the initial page view and the History patch are
+bound to `start()`/`stop()`, which the React plan relies on to drive the client from an effect
+(`autoStart: false` at construction, `start()` in the effect, `stop()` in its cleanup) without a
+duplicate `page_view` under StrictMode; the `respectGlobalPrivacyControl` and
+`respectDoNotTrack` gates documented by EP-6; the per-session exposure dedupe under `kansoku.exposures`, which the
 React plan's `useExperiment` relies on under StrictMode (it always uses the default dedupe and
 never passes `{ force: true }`; `force` exists only for applications that deliberately
 re-record an exposure); and the guarantee that importing

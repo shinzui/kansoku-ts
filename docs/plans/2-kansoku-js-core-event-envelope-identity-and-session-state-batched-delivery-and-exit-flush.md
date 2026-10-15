@@ -11,6 +11,12 @@ provenance:
     model: "claude-fable-5-1"
     harness: "claude-code"
     at: 2026-10-15T02:11:18Z
+  revisions:
+    - model: "claude-fable-5-1"
+      harness: "claude-code"
+      at: 2026-10-15T03:17:45Z
+      mode: "update"
+      note: "Add start/stop/autoStart lifecycle and onStart hook, move queue mirror to sessionStorage, resolve GPC option"
 ---
 
 # kansoku-js core: event envelope, identity and session state, batched delivery, and exit flush
@@ -49,7 +55,9 @@ keeps events in a bounded queue that survives page reloads, sends them to `POST 
 batches with the credential in the `X-Api-Key` header, interprets the server's partial
 acceptance response, retries only the failures the server contract says are retryable, flushes
 whatever remains when the user leaves the page, and tells the application about every event it
-had to drop and why. Nothing in this plan records page views or identifies users; the sibling
+had to drop and why. The client can also be paused and resumed with `stop()` and `start()`,
+which is what lets the React provider in a later plan drive it from an effect without
+workarounds. Nothing in this plan records page views or identifies users; the sibling
 plan `docs/plans/3-kansoku-js-browser-capture-page-views-navigation-attribution-identity-helpers-and-experiments.md`
 adds those on top of the engine built here.
 
@@ -66,10 +74,10 @@ HTTP requests to a tiny in-process mock server.
   every built-in event satisfies `contracts/events.json`. Accepted when
   `bun test packages/kansoku-js/test/envelope.test.ts packages/kansoku-js/test/validate.test.ts packages/kansoku-js/test/contract.test.ts`
   passes with no DOM globals loaded.
-- [ ] M2 — Storage, identity, and session: the three storage adapters (localStorage with memory
-  fallback, cookie, memory), the identity store, and the session manager persist under the
-  documented keys and formats; a session that lapses after the timeout produces a new
-  `sessionId` and a `session_start` event. Accepted when
+- [ ] M2 — Storage, identity, and session: the storage adapters (localStorage and
+  sessionStorage, each with memory fallback, plus cookie and memory), the identity store, and
+  the session manager persist under the documented keys and formats; a session that lapses
+  after the timeout produces a new `sessionId` and a `session_start` event. Accepted when
   `bun test packages/kansoku-js/test/storage.test.ts packages/kansoku-js/test/identity.test.ts packages/kansoku-js/test/session.test.ts`
   passes under happy-dom.
 - [ ] M3 — Queue, transport, retry, and accounting: `track` enqueues, `flush` delivers batches
@@ -78,10 +86,12 @@ HTTP requests to a tiny in-process mock server.
   delivery contract specifies; `beforeSend` and opt-out gate the pipeline. Accepted when
   `bun test packages/kansoku-js/test/queue.test.ts packages/kansoku-js/test/retry.test.ts packages/kansoku-js/test/transport.test.ts packages/kansoku-js/test/client.test.ts`
   passes.
-- [ ] M4 — Lifecycle, persistence, and the public surface: `pagehide` and hidden
-  `visibilitychange` trigger a chunked keepalive exit flush; a persisted queue is restored by the
-  next `createKansoku`; `shutdown` detaches listeners and flushes; the package README documents
-  the surface; the two ADRs exist and validate. Accepted when
+- [ ] M4 — Lifecycle, persistence, and the public surface: `start()` attaches and `stop()`
+  detaches the exit-flush listeners and the flush interval (both idempotent; `autoStart: false`
+  attaches nothing until `start()`); `pagehide` and hidden `visibilitychange` trigger a chunked
+  keepalive exit flush while started; a queue mirrored to `sessionStorage` is restored by the
+  next `createKansoku` in the same tab; `shutdown` stops, flushes, and refuses further events;
+  the package README documents the surface; the two ADRs exist and validate. Accepted when
   `bun test packages/kansoku-js` passes in full, `just build kansoku-js` succeeds, and
   `bun packages/kansoku-js/scripts/smoke.ts` prints `accepted: 3`.
 
@@ -136,6 +146,42 @@ HTTP requests to a tiny in-process mock server.
   provide it.
   Rationale: The MasterPlan reserves the option of extracting these modules into a Node SDK
   later. Importing the package on a server during server-side rendering must not throw.
+  Date: 2026-10-14
+
+- Decision: The client has a reversible lifecycle. `createKansoku` constructs without observable
+  side effects (it resolves options, creates adapters, loads or generates persisted identity,
+  reads the session, restores the queue mirror) and then calls `start()` unless
+  `options.autoStart` is `false`. `start()` attaches the exit-flush listeners, starts the flush
+  interval, and runs every installer registered through the internal `onStart` hook; `stop()`
+  runs their teardowns in reverse order, detaches, clears the interval, and begins a
+  non-blocking flush; both are idempotent and keep identity, session, and queue state.
+  `shutdown()` is `stop()` plus an awaited final flush plus a terminal state. The earlier
+  internal `onShutdown(fn)` hook is replaced by `onStart(install)`.
+  Rationale: React requires an effect's setup and cleanup to be symmetric and, in StrictMode,
+  runs setup → cleanup → setup once extra in development. A one-way `shutdown()` forced the
+  React provider plan into a cancellable-timer workaround. The reversible pair is the shape
+  TanStack Query's `QueryClientProvider` uses (`client.mount()` / `client.unmount()`), costs two
+  idempotent methods here, and keeps the one-call vanilla setup.
+  Date: 2026-10-14
+
+- Decision: The pending-queue mirror (`<prefix>.queue`) is written to `sessionStorage` with a
+  memory fallback, independent of the `storage` option; identity, session, opt-out, and
+  exposure keys use the selected adapter.
+  Rationale: `localStorage` is shared by all tabs of an origin, so concurrent tabs writing one
+  queue key clobber each other's pending events and both replay the other's on restore.
+  `sessionStorage` is per tab and still survives reloads and same-tab navigations, which are the
+  exit-flush failure modes worth covering. Identity must be shared across tabs, so it stays in
+  the shared adapter.
+  Date: 2026-10-14
+
+- Decision: `fetch`, `now`, and `timers` are resolved to the platform globals when not supplied
+  and are therefore required members of `ResolvedKansokuOptions`; `respectGlobalPrivacyControl`
+  is resolved here (default `false`) beside `respectDoNotTrack`, with both gates implemented in
+  EP-3.
+  Rationale: One resolved object with no optional I/O members keeps every module free of
+  `?? globalThis.fetch` fallbacks; Global Privacy Control is the privacy signal browsers ship in
+  2026 (Firefox removed Do Not Track in version 135), so the option must exist in the type even
+  though the capture gate belongs to the next plan.
   Date: 2026-10-14
 
 
@@ -207,8 +253,16 @@ that would exceed it.
 EP-1 registered it globally for the test runner through `bunfig.toml`.
 
 A **storage adapter** is this SDK's small interface over wherever state is kept: `localStorage`,
-a cookie, or memory. The SDK talks only to the adapter, so a page that blocks storage degrades
-to memory instead of throwing.
+`sessionStorage`, a cookie, or memory. The SDK talks only to the adapter, so a page that blocks
+storage degrades to memory instead of throwing. `localStorage` is shared by every tab of an
+origin and survives tab closure; `sessionStorage` belongs to one tab, survives reloads and
+navigations within that tab, and is discarded when the tab closes.
+
+**Started** and **stopped** are the two states of a constructed client. A started client has
+its page-lifecycle listeners attached, its flush interval running, and (after the next plan) its
+History API patch installed; a stopped client has none of those but keeps its identity, session,
+and queue. `start()` and `stop()` move between the states and are idempotent; `shutdown()` stops
+and then permanently refuses new events.
 
 ### The tree this plan starts from
 
@@ -225,7 +279,7 @@ kansoku-ts/
     openapi.json               copy of the server's docs/api/openapi.json
     events.json                copy of the server's docs/contracts/events.json (the schema catalog)
   scripts/
-    build.ts                   Bun.build ESM + CJS, then tsc declaration emit, for one package
+    build.ts                   Bun.build (ESM only), then tsc declaration emit, for one package
     sync-contracts.ts
   test/
     setup/dom.ts               registers happy-dom globals
@@ -415,10 +469,12 @@ either is noticed here.
 ### M2 — Storage, identity, and session
 
 Create `packages/kansoku-js/src/storage.ts` with the `StorageAdapter` interface (`get`, `set`,
-`remove`) and three implementations. `memoryStorage()` is a `Map`. `localStorageAdapter()`
+`remove`) and four implementations. `memoryStorage()` is a `Map`. `localStorageAdapter()`
 probes `globalThis.localStorage` inside a `try` by writing and removing a probe key and returns
 the memory adapter when the probe throws or `localStorage` is undefined; every later call is
-also wrapped so a quota error degrades to memory for that call. `cookieStorage({ domain })`
+also wrapped so a quota error degrades to memory for that call. `sessionStorageAdapter()` does
+the same over `globalThis.sessionStorage`; it is used only for the queue mirror (M3) and is not
+selectable through the `storage` option. `cookieStorage({ domain })`
 reads and writes `document.cookie` with `path=/`, `SameSite=Lax`, `Secure` when the page is
 `https:`, and a 400-day expiry, which is the longest browsers honour. `resolveStorage(option)`
 maps the `storage` option (`"localStorage"` default, `"cookie"`, `"memory"`, or a caller-provided
@@ -456,8 +512,8 @@ Create `packages/kansoku-js/src/queue.ts`: a bounded FIFO of `AnalyticsEvent` wi
 the new event with reason `queue_full`), `peekBatch(maxEvents, maxBytes)` (returns the longest
 prefix whose JSON size, measured with `TextEncoder`, stays within `maxBytes`, always at least
 one event), `remove(eventIds)`, `size`, `toJSON()`, and `restore(events)`. When `persistQueue`
-is on, the client writes `queue.toJSON()` to `<prefix>.queue` after every enqueue and every
-removal; the queue itself knows nothing about storage.
+is on, the client writes `queue.toJSON()` to `<prefix>.queue` through the `sessionStorage`
+adapter after every enqueue and every removal; the queue itself knows nothing about storage.
 
 Create `packages/kansoku-js/src/retry.ts` with `backoffDelayMs(attempt, baseMs, random)`
 implementing full jitter: `random() * Math.min(30_000, baseMs * 2 ** attempt)`, and with the
@@ -475,13 +531,17 @@ and, unless `keepalive` is set, an `AbortController` signal that fires after
 `requestTimeoutMs`. It never throws; it returns an outcome from `retry.ts`.
 
 Create `packages/kansoku-js/src/client.ts` with `createKansoku`. Option resolution applies the
-defaults from the Interfaces section and freezes the result as `client.config`. Construction
-wires the storage adapter, identity store, session manager, queue (restoring `<prefix>.queue`
-when `persistQueue` is on), and, if `document` exists, the lifecycle hooks from M4. It starts
-the flush interval with the injected `timers`. Opt-out state is `<prefix>.opt_out` in storage.
-The `respectDoNotTrack` option is resolved into `client.config` here but not acted upon: EP-3
-implements the Do-Not-Track gate (reading `navigator.doNotTrack`) and routes suppressed events
-through this plan's `opted_out` drop path, so EP-2 adds no browser-sniffing code for it.
+defaults from the Interfaces section (`fetch`, `now`, and `timers` default to `globalThis.fetch`,
+`Date.now`, and the global timer functions) and freezes the result as `client.config`.
+Construction wires the selected storage adapter, the identity store, the session manager, the
+`sessionStorageAdapter()` for the queue mirror, and the queue itself (restoring `<prefix>.queue`
+from the mirror when `persistQueue` is on). Construction attaches no listeners, starts no timer,
+and records no event; those belong to `start()` (M4), which `createKansoku` calls as its last
+step unless `options.autoStart` is `false`. Opt-out state is `<prefix>.opt_out` in the selected
+adapter. The `respectDoNotTrack` and `respectGlobalPrivacyControl` options are resolved into
+`client.config` here but not acted upon: EP-3 implements both gates (reading
+`navigator.doNotTrack` and `navigator.globalPrivacyControl`) and routes suppressed events
+through this plan's `opted_out` drop path, so EP-2 adds no browser-sniffing code for them.
 
 `createKansoku` returns the public `KansokuClient`, but internally it builds a richer object
 that EP-3 extends. Besides the public members, the internal client object exposes three
@@ -492,9 +552,13 @@ registers a function that is called every time the client constructs an event; t
 all providers are merged in registration order into a `baseContext` object that `buildEvent`
 places beneath the caller's `TrackOptions.context`, so caller keys win. EP-2 registers no
 providers itself; EP-3's context module registers one. The returned function unregisters the
-provider. `onShutdown(fn: () => void): void` registers a callback that `shutdown()` runs at its
-start, before detaching listeners and before the final flush; EP-3 uses it to unpatch the
-History API. The internal object also re-exposes the envelope builder as
+provider. `onStart(install: () => (() => void) | void): void` registers an installer that
+`start()` runs on every activation, in registration order, and whose returned teardown (if any)
+`stop()` runs on every deactivation, in reverse order; an installer registered while the client
+is already started runs immediately. EP-3 registers one installer that records the initial page
+view and patches the History API and returns the unpatch function. This plan's own exit-flush
+listeners and flush interval are installed through the same mechanism (M4) so there is exactly
+one notion of "started". The internal object also re-exposes the envelope builder as
 `buildEvent(name, properties, options, webFields?, ids?)`, already bound to the identity store,
 session manager, resolved config, and context providers, so EP-3 builds capture events with it
 and hands them to `enqueueBuilt`; the `ids` slot is the per-event identity override that only
@@ -523,7 +587,9 @@ dropped with reason `retries_exhausted`. The queue is persisted after every remo
 exposes `queued` (live queue size), `accepted`, `rejected`, and `dropped`.
 
 `optOut()` persists the flag, drops the queue contents with reason `opted_out`, and stops
-accepting events; `optIn()` clears the flag. `shutdown()` is finished in M4.
+accepting events; `optIn()` clears the flag. In this milestone `start()` only starts the flush
+interval and `stop()` only clears it; M4 adds the page-lifecycle listeners, the `onStart`
+installers' teardown ordering, and `shutdown()`.
 
 Tests `queue.test.ts`, `retry.test.ts`, `transport.test.ts`, and `client.test.ts` use the
 scripted fetch from `test/helpers/fetch-mock.ts`. EP-1 owns that helper, and its agreed shape is
@@ -539,8 +605,10 @@ rejection calls `onDrop` once with reason `rejected` and the right event and lea
 with `retryable: true` is retried until a 202 and the queue is unchanged between attempts;
 `maxRetries` consecutive network errors end in `retries_exhausted`; `beforeSend` returning
 `null` drops with `before_send`; `queue_full` fires when `maxQueueSize` is exceeded; `optOut`
-suppresses tracking; a rolled session emits `session_start` before the triggering event; and a
-`session_start` event is suppressed when `autocapture.sessions` is `false`.
+suppresses tracking; a rolled session emits `session_start` before the triggering event; a
+`session_start` event is suppressed when `autocapture.sessions` is `false`; and a client created
+with `autoStart: false` schedules no interval through the injected `timers` until `start()` is
+called, after which `flushIntervalMs` flushes run.
 
 ### M4 — Lifecycle, persistence, and the public surface
 
@@ -552,16 +620,29 @@ double invocation for the same hidden transition and re-arms when visibility ret
 chunks whose serialised body is at most 61,440 bytes, and for each chunk calls `sendBatch` with
 `keepalive: true` without awaiting the result before starting the next; when a response does
 arrive it is processed exactly like a normal flush (so events are removed from the persisted
-queue only after a 202). Events for which no response arrives stay in `<prefix>.queue` and are
-restored and re-sent by the next `createKansoku` on that origin with the same `eventId` values.
+queue only after a 202). Events for which no response arrives stay in the `sessionStorage`
+mirror `<prefix>.queue` and are restored and re-sent by the next `createKansoku` in that tab
+(a reload or a same-tab navigation back to the origin) with the same `eventId` values.
 
-Finish `shutdown()`: it first runs every callback registered through the internal `onShutdown`
-hook in registration order, then detaches the lifecycle listeners, clears the interval timer,
-awaits `flush()`, and makes later `track` calls drop with reason `opted_out` wrapped in
-`detail: "shutdown"`. A `client.test.ts` case registers an `onShutdown` callback and a context
-provider through the internal object and asserts the callback ran before the final request was
-sent and that the provider's keys appear in every event's `context` beneath the caller's keys. `createKansoku` must be callable more than once in one page (tests do this), so
-nothing may be a module-level singleton.
+Finish the lifecycle. `start()` is idempotent: if the client is already started or has been shut
+down it returns (logging a line when `debug` is on); otherwise it marks the client started,
+attaches the exit flush with `attachExitFlush` when `document` exists, starts the flush interval
+with the injected `timers`, and runs every `onStart` installer in registration order, keeping
+the teardowns they return. `stop()` is the idempotent inverse: if not started it returns;
+otherwise it runs the kept teardowns in reverse order, detaches the exit flush, clears the
+interval, marks the client stopped, and begins `flush()` without awaiting it, so events queued
+while started are not stranded. Identity, session, queue, and every registered installer and
+context provider survive `stop()`, so `start()` resumes exactly where the client left off.
+`shutdown()` calls `stop()`, awaits `flush()`, and marks the client terminal: later `track`
+calls drop with reason `opted_out` and `detail: "shutdown"`, and `start()` becomes a no-op.
+`client.test.ts` cases: an `onStart` installer registered through the internal object runs on
+`start()`, its teardown runs on `stop()` before the listeners detach, and both run again on a
+second `start()`/`stop()` cycle; `start()` twice attaches one set of listeners (dispatching
+`pagehide` yields one exit flush); `stop()` twice is harmless; `track` after `stop()` enqueues
+and the event is delivered by the next `flush()` or `start()`; a context provider's keys appear
+in every event's `context` beneath the caller's keys; and `createKansoku({ autoStart: false })`
+followed by `pagehide` sends nothing. `createKansoku` must be callable more than once in one
+page (tests do this), so nothing may be a module-level singleton.
 
 Export the public surface from `packages/kansoku-js/src/index.ts`: `createKansoku`, `version`,
 the types `KansokuOptions`, `ResolvedKansokuOptions`, `KansokuClient`, `TrackOptions`,
@@ -570,16 +651,21 @@ the types `KansokuOptions`, `ResolvedKansokuOptions`, `KansokuClient`, `TrackOpt
 the same file.
 
 Write the README section "Core API" in `packages/kansoku-js/README.md` covering construction,
-`track`, `flush`, `shutdown`, opt-out, `stats`, drop reasons, and the delivery guarantees in
+`track`, `flush`, the lifecycle (`autoStart`, `start`, `stop`, `shutdown`, and when a framework
+binding should drive it), opt-out, `stats`, drop reasons, where state is stored (identity in the
+selected adapter, the queue mirror in `sessionStorage`), and the delivery guarantees in
 plain language, and add `packages/kansoku-js/scripts/smoke.ts`, which starts a `Bun.serve`
 server on an ephemeral port that answers `POST /v1/batch` with a 202 acknowledgement of every
 event, imports `createKansoku` from `../dist/index.js`, tracks three events, flushes, and prints
 `accepted: 3`. Finally create the two ADRs and validate them (see Concrete Steps).
 
 Tests `lifecycle.test.ts` (dispatching `pagehide` on happy-dom's `window` and asserting chunked
-keepalive requests) and a persistence case in `client.test.ts` (create a client, track, do not
-flush, create a second client with the same storage, flush, and assert the first client's
-events were sent) complete the suite.
+keepalive requests, and asserting that after `stop()` the same dispatch sends nothing) and a
+persistence case in `client.test.ts` (create a client, track, do not flush, create a second
+client in the same happy-dom window, flush, and assert the first client's events were sent from
+the `sessionStorage` mirror; happy-dom implements `sessionStorage` beside `localStorage`, and if
+the installed version does not, record it in Surprises & Discoveries and stub it for the test)
+complete the suite.
 
 
 ## Concrete Steps
@@ -635,6 +721,7 @@ export interface KansokuOptions {
   baseUrl: string                         // e.g. "https://analytics.example.com"; no trailing slash
   writeKey: string                        // ksk_w_… ; sent as X-Api-Key
   sourceService?: string                  // stamps AnalyticsEvent.sourceService
+  autoStart?: boolean                     // default true; false constructs without side effects until start()
   flushAt?: number                        // default 20 events
   flushIntervalMs?: number                // default 5000
   maxQueueSize?: number                   // default 1000; newest event dropped when full
@@ -643,15 +730,16 @@ export interface KansokuOptions {
   maxRetries?: number                     // default 5
   retryBaseDelayMs?: number               // default 500; exponential, full jitter, 30 s cap
   requestTimeoutMs?: number               // default 10000
-  persistQueue?: boolean                  // default true
-  storage?: "localStorage" | "cookie" | "memory" | StorageAdapter   // default "localStorage"
+  persistQueue?: boolean                  // default true; mirrors the queue to sessionStorage (per tab)
+  storage?: "localStorage" | "cookie" | "memory" | StorageAdapter   // identity, session, opt-out, exposures; default "localStorage"
   storageKeyPrefix?: string               // default "kansoku"
   cookieDomain?: string                   // only for the cookie adapter
   sessionTimeoutMs?: number               // default 1_800_000 (30 min)
   schemaVersions?: Record<string, number> // per-event pins; merged over built-in defaults
   autocapture?: { pageViews?: boolean; sessions?: boolean }   // defaults true/true; pageViews is EP-3
   optOut?: boolean                        // start opted out
-  respectDoNotTrack?: boolean             // default false
+  respectDoNotTrack?: boolean             // default false; gate implemented in EP-3
+  respectGlobalPrivacyControl?: boolean   // default false; gate implemented in EP-3
   beforeSend?: (event: AnalyticsEvent) => AnalyticsEvent | null
   onDrop?: (info: DropInfo) => void
   fetch?: typeof globalThis.fetch         // injectable for tests
@@ -675,7 +763,9 @@ export interface KansokuStats { queued: number; accepted: number; rejected: numb
 export interface KansokuClient {
   track(eventName: string, properties?: JsonObject, options?: TrackOptions): void
   flush(): Promise<void>
-  shutdown(): Promise<void>
+  start(): void                            // idempotent; attach listeners, interval, onStart installers
+  stop(): void                             // idempotent inverse; detach and begin a non-blocking flush
+  shutdown(): Promise<void>                // stop(), await flush(), then refuse further events
   optOut(): void
   optIn(): void
   isOptedOut(): boolean
@@ -773,7 +863,7 @@ Use the handle `okf id next` printed; the example below assumes it printed `ADR-
 ---
 type: Architecture Decision Record
 title: Delivery semantics and exit transport for kansoku-js
-description: Deliver only through POST /v1/batch with X-Api-Key, retry only transient outcomes, split on 413, and flush on exit with chunked keepalive fetch because headers rule out sendBeacon.
+description: Deliver only through POST /v1/batch with X-Api-Key, retry only transient outcomes, split on 413, flush on exit with chunked keepalive fetch because headers rule out sendBeacon, and expose a reversible start/stop lifecycle so framework bindings can drive the client from an effect.
 timestamp: 2026-10-20T00:00:00Z
 docId: ADR-1
 status: Accepted
@@ -794,7 +884,8 @@ date: 2026-10-20
 
 Replace the timestamp and date with the day you write it. Write the second record ("Identity
 and session persistence policy for kansoku-js": storage keys, formats, adapter fallback order,
-thirty-minute inactivity timeout, what `reset` clears) with the next handle. Then:
+why the queue mirror lives in per-tab `sessionStorage` while identity lives in the shared
+adapter, thirty-minute inactivity timeout, what `reset` clears) with the next handle. Then:
 
 ```bash
 okf validate docs/adr --strict --profile docs/adr/profile.dhall --profile-enforce --log-enforce
@@ -842,10 +933,17 @@ have a test, and each observes only public behaviour: the recorded requests, `st
 
 The lifecycle test dispatches `pagehide` after queueing enough events to exceed 61,440 bytes of
 JSON and asserts that more than one request was made, every request had `keepalive: true`, and
-no request body exceeded 61,440 bytes.
+no request body exceeded 61,440 bytes; after `stop()` the same dispatch produces no request,
+and after `start()` it produces requests again.
+
+The lifecycle is reversible and idempotent: in `client.test.ts`, `start()` twice then `pagehide`
+yields one exit flush; `stop()` twice throws nothing; an internal `onStart` installer's teardown
+runs on `stop()` and the installer runs again on the next `start()`; a client created with
+`autoStart: false` schedules no timer and sends nothing on `pagehide` until `start()`; and
+`shutdown()` leaves `start()` a no-op.
 
 `just check` passes (type-check, lint, format). `just build kansoku-js` produces
-`packages/kansoku-js/dist/index.js`, `dist/index.cjs`, `dist/index.d.ts`, and `dist/index.d.cts`,
+`packages/kansoku-js/dist/index.js`, `dist/index.js.map`, and `dist/index.d.ts` (ESM only),
 and `bun packages/kansoku-js/scripts/smoke.ts` prints `accepted: 3` after a real HTTP round trip
 to the in-process mock.
 
@@ -903,9 +1001,9 @@ Runtime dependencies: none. `kansoku-js` must have an empty `dependencies` field
 
 Platform APIs relied upon: `fetch` with `keepalive` and `AbortController` (all evergreen
 browsers, Node 18+, Bun), `globalThis.crypto.randomUUID` (with the fallback described in M1),
-`TextEncoder`, `localStorage` and `document.cookie` (inside the storage adapters only),
-`document.visibilityState`, and the `visibilitychange` and `pagehide` events (inside
-`lifecycle.ts` only).
+`TextEncoder`, `localStorage`, `sessionStorage`, and `document.cookie` (inside the storage
+adapters only), `document.visibilityState`, and the `visibilitychange` and `pagehide` events
+(inside `lifecycle.ts` only).
 
 Modules this plan owns, by full path under `packages/kansoku-js/src/`: `index.ts`, `types.ts`,
 `client.ts`, `envelope.ts`, `queue.ts`, `transport.ts`, `retry.ts`, `storage.ts`,
@@ -922,8 +1020,9 @@ identity store methods `snapshot`, `setUserId`, `setIdentifiers`, `setOrganizati
 `rotateAnonymousId`, and `clearUser` in `identity.ts`; the session manager methods `current`,
 `touch`, and `rotate` in `session.ts`; the constants and pattern in `contract/events.ts`; the
 validators in `contract/validate.ts`; and the storage keys `<prefix>.anonymous_id`,
-`<prefix>.user_id`, `<prefix>.identifiers`, `<prefix>.organization_id`, `<prefix>.session`,
-`<prefix>.queue`, and `<prefix>.opt_out` (EP-3 adds `<prefix>.exposures`).
+`<prefix>.user_id`, `<prefix>.identifiers`, `<prefix>.organization_id`, `<prefix>.session`, and
+`<prefix>.opt_out` in the selected adapter and `<prefix>.queue` in `sessionStorage` (EP-3 adds
+`<prefix>.exposures` to the selected adapter).
 
 The internal client object, which `createKansoku` builds and EP-3 extends, exposes three hooks
 that are never part of the exported `KansokuClient` type. `enqueueBuilt(event: AnalyticsEvent): void`
@@ -932,8 +1031,11 @@ event, so EP-3's capture events share `track`'s pipeline. `registerContextProvid
 registers a provider called on every event construction; results are merged in registration
 order into the `baseContext` passed to `buildEvent`, beneath the caller's `TrackOptions.context`;
 the return value unregisters. EP-2 registers none; EP-3's context module registers one.
-`onShutdown(fn: () => void): void` registers a callback run at the start of `shutdown()`, before
-listeners are detached and before the final flush; EP-3 uses it to unpatch the History API.
+`onStart(install: () => (() => void) | void): void` registers an installer that `start()` runs
+on every activation in registration order and whose returned teardown `stop()` runs on every
+deactivation in reverse order; EP-3 registers one installer that records the initial page view
+and patches the History API, returning the unpatch function. Installers registered after the
+client is already started are run immediately.
 The internal object re-exposes the envelope builder as
 `buildEvent(name, properties, options, webFields?, ids?)`, bound to the identity store, session
 manager, resolved config, and context providers (the pure function in `envelope.ts` takes those
@@ -944,8 +1046,9 @@ when present, each defined field overrides the identity-store value for that eve
 the store is untouched. `track` never passes `webFields` or `ids`; EP-3's `alias` is the only
 caller of `ids`, so it can stamp `anonymousId = previousId` and `userId = newId` on one event.
 
-`respectDoNotTrack` is resolved into `client.config` by this plan but the gate itself is EP-3's:
-EP-3 reads `navigator.doNotTrack` and reuses this plan's `opted_out` drop path.
+`respectDoNotTrack` and `respectGlobalPrivacyControl` are resolved into `client.config` by this
+plan but the gates themselves are EP-3's: EP-3 reads `navigator.doNotTrack` and
+`navigator.globalPrivacyControl` and reuses this plan's `opted_out` drop path.
 
 Server contract this plan implements, by canonical handle:
 `mori://shinzui/kansoku/okf/adrs/concepts/ADR-1`, `mori://shinzui/kansoku/okf/adrs/concepts/ADR-3`,

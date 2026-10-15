@@ -11,6 +11,12 @@ provenance:
     model: "claude-fable-5-1"
     harness: "claude-code"
     at: 2026-10-15T02:11:18Z
+  revisions:
+    - model: "claude-fable-5-1"
+      harness: "claude-code"
+      at: 2026-10-15T03:17:45Z
+      mode: "update"
+      note: "Provider drives start/stop from an effect (no shutdown workaround), ReactElement typing, memoised context, optional @types/react peer"
 ---
 
 # kansoku-react: provider, hooks, and router-agnostic page tracking
@@ -50,7 +56,9 @@ was shown an experiment variant with `useExperiment("checkout_copy", "variant_b"
 explicit control of page views with `usePageView(location.pathname + location.search)`, and
 reach the underlying client with `useKansoku()` for anything else (`flush`, `reset`, `group`).
 All of this is safe to render on a server (hooks become no-ops where there is no browser) and
-safe under React StrictMode, which deliberately mounts components twice in development.
+safe under React StrictMode, which deliberately runs every effect's setup and cleanup once extra
+in development: the provider constructs the client without side effects and drives its
+reversible `start()`/`stop()` lifecycle from an effect, so the extra cycle simply restarts it.
 
 The package is a thin binding. It contains no analytics logic of its own: every hook is a
 small wrapper around one method of the `kansoku-js` client described below, so behaviour,
@@ -61,14 +69,15 @@ simulated browser and asserts the exact events handed to a mocked `fetch`.
 
 ## Progress
 
-- [ ] M1: `KansokuProvider`, the React context, `useKansoku`, and the server-side no-op client
-  exist in `packages/kansoku-react`; the package builds with `just build` to the export-map
-  layout (`dist/index.js`, `dist/index.cjs`, `dist/index.d.ts`, `dist/index.d.cts`) and every
-  built file begins with the `"use client";` directive.
+- [ ] M1: `KansokuProvider` (constructing with `autoStart: false`, `start()` in its effect,
+  `stop()` in the cleanup, memoised context value), the React context, `useKansoku`, and the
+  server-side no-op client exist in `packages/kansoku-react`; the package builds with `just build` to the export-map
+  layout (`dist/index.js`, `dist/index.js.map`, `dist/index.d.ts`; ESM only) and
+  `dist/index.js` begins with the `"use client";` directive.
 - [ ] M2: `useTrack`, `usePageView`, `useIdentify`, and `useExperiment` are implemented with the
   one-time development warning in `usePageView`, and `bun run typecheck` passes for the package.
 - [ ] M3: `bun test packages/kansoku-react` passes under happy-dom with the fetch mock,
-  including the StrictMode single-exposure test and a server-rendering test that runs with
+  including the StrictMode provider-restart and single-exposure tests and a server-rendering test that runs with
   `KANSOKU_TEST_NO_DOM=1`; `packages/kansoku-react/README.md` documents both the plain and the React
   Router usage; the "React binding boundary" ADR is recorded in `docs/adr/`.
 
@@ -96,20 +105,44 @@ simulated browser and asserts the exact events handed to a mocked `fetch`.
   rendering for every consumer; a silent no-op on the client would hide a real misconfiguration.
   Date: 2026-10-14
 
-- Decision: The provider owns the lifecycle of a client it created from `options` (one instance
-  per mounted provider, `shutdown()` on unmount) and never shuts down a client passed in through
-  `client`.
-  Rationale: Whoever creates the client decides when it dies. An application that constructs the
-  client itself may share it with non-React code, so the provider must not flush and stop it.
+- Decision: The provider constructs a client from `options` exactly once per mounted provider,
+  with `autoStart: false` inside a lazy `useState` initialiser, and drives its lifecycle from an
+  effect: `client.start()` in the setup and `client.stop()` in the cleanup. It never calls
+  `shutdown()`, and it never starts or stops a client passed in through `client`.
+  Rationale: React requires effect setup and cleanup to be symmetric and runs setup → cleanup →
+  setup once extra under StrictMode in development; constructing a side-effecting client during
+  render and shutting it down in a cleanup can only be made to work with a timing workaround.
+  This is the pattern TanStack Query's `QueryClientProvider` uses (`client.mount()` /
+  `client.unmount()`), and `kansoku-js` exposes the matching reversible pair for it. Whoever
+  creates the client decides when it dies: an application that constructs the client itself may
+  share it with non-React code, so the provider leaves such a client alone. (Supersedes the
+  2026-10-14 draft decision that the provider called `shutdown()` on unmount with a deferred,
+  cancellable timer to survive StrictMode.)
+  Date: 2026-10-14
+
+- Decision: Components are typed with `ReactElement` from `react`, never the global
+  `JSX.Element`; the context value is memoised with `useMemo`; the provider renders
+  `<KansokuContext.Provider>` (not the React 19 `<KansokuContext>` shorthand); every hook effect
+  lists the client in its dependency array; and `@types/react` is an optional peer dependency.
+  Rationale: `@types/react` 19 removed the global `JSX` namespace, so `JSX.Element` does not
+  compile against the pinned types. An unmemoised `{ client }` literal re-renders every consumer
+  on every provider render. The `.Provider` form is the one that works across the whole
+  `^18.0.0 || ^19.0.0` peer range. Listing the client keeps hooks correct when a provider is
+  remounted with a `key` or receives a different `client` prop. The optional `@types/react` peer
+  (the convention zustand and Radix use) lets TypeScript consumers resolve the React types the
+  declaration files import without forcing JavaScript consumers to install them.
   Date: 2026-10-14
 
 - Decision: The built output must start with the `"use client";` directive, injected through the
   per-package `"kansoku": { "banner": "\"use client\";" }` manifest field that EP-1's shared
   build script reads and passes to `Bun.build` as `banner`, rather than relying on the source
   directive surviving bundling. This plan only sets the field; the mechanism belongs to EP-1.
-  Rationale: A 2026-10-14 experiment with Bun 1.4.2 showed `Bun.build` keeps the directive in
-  ESM output only after a leading comment and buries it mid-file in CommonJS output, where it is
-  no longer a directive. React Server Components bundlers require it in the file's prologue.
+  Rationale: Two 2026-10-14 experiments with Bun 1.4.2. The first showed CommonJS output burying
+  the directive after the module helpers (moot since the packages became ESM-only). The second,
+  on an ESM build of a module with an external `react` import, showed the bundler emitting the
+  hoisted `import` statement first and the source-level directive after it, where it is an inert
+  expression. React Server Components bundlers require the directive in the file's prologue, so
+  the banner is still the only reliable way to put it there.
   Date: 2026-10-14
 
 
@@ -153,11 +186,16 @@ Terms used in this plan, defined once here.
 - **`"use client"` directive**: a string literal that must appear at the very top of a module's
   code (only comments may precede it). React Server Components frameworks read it to learn that
   the module runs in the browser. Hooks and providers are browser-only, so this package's entry
-  module carries it, and the built files must too.
+  module carries it, and the built file must too (the bundler hoists `import` statements above
+  it, which is why EP-1's banner puts it back on line 1).
 - **Peer dependency**: a dependency the consuming application must install itself, declared in
   `peerDependencies`, so there is exactly one copy of `react` (and of `kansoku-js`) in the app.
 - **`renderHook`**: a helper from `@testing-library/react` that mounts a throwaway component
   which calls the hook under test and exposes its return value and a `rerender` function.
+- **Lazy initialiser**: the function form of `useState(() => …)`. React calls it on the first
+  render only, to compute the initial state; under StrictMode it is called twice and one result
+  is discarded, which is harmless when the function has no side effects, as `createKansoku`
+  with `autoStart: false` has not.
 - **Lockstep version**: both packages in this repository are released with the same version
   number through a changesets fixed group, so `kansoku-react@0.1.0` peer-depends on
   `kansoku-js@^0.1.0`. The peer range is written literally in the manifest because the release
@@ -172,6 +210,7 @@ export interface KansokuOptions {
   baseUrl: string                         // e.g. "https://analytics.example.com"; no trailing slash
   writeKey: string                        // ksk_w_… ; sent as X-Api-Key
   sourceService?: string                  // stamps AnalyticsEvent.sourceService
+  autoStart?: boolean                     // default true; the provider passes false and calls start() itself
   flushAt?: number                        // default 20 events
   flushIntervalMs?: number                // default 5000
   maxQueueSize?: number                   // default 1000; newest event dropped when full
@@ -189,6 +228,7 @@ export interface KansokuOptions {
   autocapture?: { pageViews?: boolean; sessions?: boolean }   // defaults true/true
   optOut?: boolean                        // start opted out
   respectDoNotTrack?: boolean             // default false
+  respectGlobalPrivacyControl?: boolean   // default false
   beforeSend?: (event: AnalyticsEvent) => AnalyticsEvent | null
   onDrop?: (info: DropInfo) => void
   fetch?: typeof globalThis.fetch         // injectable for tests
@@ -206,7 +246,9 @@ export interface DropInfo { reason: DropReason; events: AnalyticsEvent[]; detail
 export interface KansokuClient {
   track(eventName: string, properties?: JsonObject, options?: TrackOptions): void
   flush(): Promise<void>
-  shutdown(): Promise<void>
+  start(): void                            // idempotent; attaches listeners, interval, History patch, initial page_view
+  stop(): void                             // idempotent inverse; detaches and begins a non-blocking flush
+  shutdown(): Promise<void>                // stop(), await flush(), then refuse further events; never called by this package
   optOut(): void
   optIn(): void
   isOptedOut(): boolean
@@ -214,7 +256,7 @@ export interface KansokuClient {
   getUserId(): string | undefined
   getSessionId(): string
   readonly stats: Readonly<{ queued: number; accepted: number; rejected: number; dropped: number }>
-  readonly config: Readonly<ResolvedKansokuOptions>
+  readonly config: ResolvedKansokuOptions
   page(properties?: JsonObject, options?: TrackOptions): void
   identify(userId: string, traits?: JsonObject): void
   alias(previousId: string, newId: string, properties?: JsonObject): void
@@ -239,9 +281,16 @@ session for that pair, so a StrictMode double effect produces one event. The fou
 `options?: ExperimentOptions`, carries `{ force: true }` to bypass that dedupe; `useExperiment`
 never passes `force` and relies on the default per-session dedupe, so the dedupe lives entirely
 in `kansoku-js`.
-Third, `client.shutdown()` flushes queued events with a keepalive request and detaches all
-page-lifecycle listeners and History patches; calling it on a client that someone else still
-uses would silently stop their tracking.
+Third, `client.shutdown()` stops the client, awaits a final flush, and then refuses further
+events for good; calling it on a client that someone else still uses would silently stop their
+tracking, which is why the provider never calls it. Fourth, the lifecycle is reversible:
+`createKansoku({ ..., autoStart: false })` constructs a client with no observable side effects
+(no listeners, no timer, no History patch, no initial `page_view`), `client.start()` activates
+all of those (recording the initial `page_view` at that moment, deduplicated by URL), and
+`client.stop()` deactivates them, removes the History patch, begins a non-blocking flush, and
+keeps identity, session, queue, and the page-view dedupe key. Both are idempotent, so
+`start()` → `stop()` → `start()` on the same URL records exactly one initial `page_view`. That
+is the property the provider's effect relies on.
 
 **Why exposure is recorded on mount.** The server's experiment analytics (canonical handle
 `mori://shinzui/kansoku/okf/adrs/concepts/ADR-6`) count a user as exposed to a variant only when
@@ -256,23 +305,21 @@ mounted", which is why `useExperiment` emits in an effect on mount and again onl
 `types`); `tsconfig.json` extending `../../tsconfig.base.json` (which supplies
 `"lib": ["ES2022", "DOM", "DOM.Iterable"]` and `"jsx": "react-jsx"`); `tsconfig.build.json`
 used for declaration emit; `src/index.ts` with a placeholder export; and `test/` with nothing
-in it. The shared build script `scripts/build.ts <package-dir>` runs `Bun.build` twice (ESM to
-`dist/index.js`, CommonJS to `dist/index.cjs`, `target: "browser"`) and then
-`tsc -p tsconfig.build.json` to emit `dist/index.d.ts`, copying it to `dist/index.d.cts`.
+in it. The shared build script `scripts/build.ts <package-dir>` runs `Bun.build` once (ESM to
+`dist/index.js`, `target: "browser"`, peers external) and then `tsc -p tsconfig.build.json` to
+emit `dist/index.d.ts`; both packages are ESM-only, so there is no CommonJS output.
 `just build` runs it for every package.
 
 ```json
 {
+  "type": "module",
   "exports": {
-    ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
-    },
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts"
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "engines": { "node": ">=20.19.0" }
 }
 ```
 
@@ -294,7 +341,8 @@ installed by EP-1 (see `agents/skills/exec-plan/ADR.md` for the allocation and v
 commands). Scan its filenames before you start; at planning time no record concerns React. This
 plan creates one short ADR, "React binding boundary", recording that `kansoku-react` is a thin
 wrapper with no second implementation, that it peer-depends on `kansoku-js` at the lockstep
-version, that the provider owns only clients it creates, and that hooks are no-ops under SSR.
+version, that the provider starts and stops only clients it creates and never shuts one down,
+and that hooks are no-ops under SSR.
 The only server ADR this plan depends on is ADR-6, cited above by its canonical Mori handle.
 The server's ingest contract, authentication, identity, and schema-version rules are consumed
 entirely through `kansoku-js` and are documented in EP-2 and EP-3.
@@ -340,8 +388,9 @@ globals, and `just build` emits files that start with `"use client";`.
 where `KansokuContextValue` is `{ client: KansokuClient }`. Keep the value an object so it can
 grow later without changing the context type.
 
-`src/noop-client.ts` exports `createNoopClient(): KansokuClient`, an object whose methods do
-nothing, whose `flush` and `shutdown` return a resolved promise, whose `getAnonymousId` and
+`src/noop-client.ts` exports `createNoopClient(): KansokuClient`, an object whose methods
+(including `start` and `stop`) do nothing, whose `flush` and `shutdown` return a resolved
+promise, whose `getAnonymousId` and
 `getSessionId` return the empty string, whose `getUserId` returns `undefined`, whose
 `isOptedOut` returns `true`, whose `stats` are all zero, and whose `config` is a frozen object
 with `autocapture: { pageViews: false, sessions: false }` so no hook warns. Import only the
@@ -350,19 +399,34 @@ is safe wherever React runs.
 
 `src/provider.tsx` exports `KansokuProvider` with props
 `({ client: KansokuClient } | { options: KansokuOptions }) & { children: ReactNode }`. When
-`client` is given, the provider uses it as is. When `options` is given, the provider creates the
-client exactly once for the lifetime of the mounted provider: hold it in `useRef`, create it
-lazily on first render when `typeof window !== "undefined"`, and ignore later changes to the
-`options` object (document this: options are read once; to reconfigure, remount with a `key`).
-Under SSR the provider supplies `createNoopClient()` and never calls `createKansoku`. On the
-client, an effect registers a cleanup that calls `shutdown()` only when the provider created the
-client. StrictMode will run that effect, clean it up, and run it again on the same mounted
-provider; because the client lives in a ref and `shutdown` would stop it, the cleanup must not
-shut the client down on the StrictMode fake unmount. Handle this with the standard pattern: the
-effect sets a `mounted` flag, the cleanup schedules the shutdown in a microtask or `setTimeout(0)`
-and the next effect run cancels it if the component is still mounted. Write a test for exactly
-this (M3). Development-mode double invocation of the render function is harmless because the ref
-initialiser only runs when the ref is empty.
+`client` is given, the provider uses it as is and never starts, stops, or shuts it down. When
+`options` is given, the provider creates the client exactly once for the lifetime of the mounted
+provider in a lazy `useState` initialiser: `createKansoku({ ...options, autoStart: false })`
+when `typeof window !== "undefined"`, and `createNoopClient()` under SSR, where `createKansoku`
+is never called. Later changes to the `options` object are ignored (document this: options are
+read once; to reconfigure, remount with a `key`). Construction with `autoStart: false` has no
+observable side effects, so StrictMode's double invocation of the initialiser in development
+is harmless (the discarded instance holds no listeners, timer, or patch). The provider then
+runs one effect, keyed on the client, that is the whole lifecycle:
+
+```tsx
+useEffect(() => {
+  if (!ownsClient) return
+  client.start()
+  return () => {
+    client.stop()
+  }
+}, [client, ownsClient])
+```
+
+Under StrictMode React runs setup → cleanup → setup, which is `start()` → `stop()` → `start()`
+on the same client; `kansoku-js` guarantees that sequence leaves the client started with one
+initial `page_view` recorded. On a real unmount `stop()` removes the History patch, detaches the
+listeners, and begins a flush of anything queued; the instance is then garbage-collected with the
+provider. The context value is `useMemo(() => ({ client }), [client])` so consumers do not
+re-render on every provider render, and the provider renders `<KansokuContext.Provider value={…}>`
+rather than React 19's bare `<KansokuContext value={…}>` because the peer range includes React
+18. Write tests for the StrictMode restart and for the unmount stop (M3).
 
 `src/hooks/useKansoku.ts` exports `useKansoku(): KansokuClient`. It reads the context; if the
 value is present it returns `value.client`; if it is absent and `typeof window === "undefined"`
@@ -378,15 +442,17 @@ so consumers can import everything they need from one package.
 
 Build directive: EP-1's shared build script contract includes a per-package banner. Add to
 `packages/kansoku-react/package.json` the field `"kansoku": { "banner": "\"use client\";" }`;
-`scripts/build.ts` reads that field and passes it as the `banner` option to both `Bun.build`
-calls, so this plan changes nothing in the script. The
-2026-10-14 experiment behind this is in the Decision Log: without a banner, ESM output places
-the directive after a `// src/index.ts` comment, which is still a legal prologue, but CommonJS
-output places it after the module helpers, which is not. Acceptance for the build is that
-`head -1 dist/index.js` and `head -1 dist/index.cjs` both print `"use client";`.
+`scripts/build.ts` reads that field and passes it as the `banner` option to `Bun.build`, so
+this plan changes nothing in the script. The 2026-10-14 experiments behind this are in the
+Decision Log: without a banner, Bun's ESM output hoists the external `import` of `react` above
+the source-level directive, which demotes it to an inert string. Acceptance for the build is
+that `head -1 dist/index.js` prints `"use client";`.
 
 Manifest changes: set `peerDependencies` to `{ "react": "^18.0.0 || ^19.0.0", "kansoku-js":
-"^0.1.0" }`. The `kansoku-js` peer range is a literal semver range, not a `workspace:` range:
+"^0.1.0", "@types/react": ">=18" }` and `peerDependenciesMeta` to
+`{ "@types/react": { "optional": true } }`, so TypeScript consumers get the React types the
+emitted declaration files import while JavaScript consumers are not forced to install them
+(EP-1's scaffold already uses these values; confirm rather than retype). The `kansoku-js` peer range is a literal semver range, not a `workspace:` range:
 the release pipeline (EP-6) publishes with `npm publish` because `bun publish` cannot attach
 provenance, and `npm publish` does not rewrite `workspace:` protocols, so a `workspace:^` peer
 would be published verbatim and be uninstallable. The changesets fixed group keeps the literal
@@ -399,10 +465,13 @@ not published, so the `workspace:` protocol is harmless there), and declare no `
 
 `useTrack()` returns a function with the same signature as `client.track`, memoised with
 `useCallback` on the client so its identity is stable across renders (consumers pass it to
-`useEffect` dependency arrays).
+`useEffect` dependency arrays). Every effect in this milestone lists `client` in its dependency
+array beside its own keys, so a provider remounted with a `key` or handed a different `client`
+prop re-runs the hooks against the new instance; `useKansoku()` returns a stable reference for
+the life of one provider, so this adds no re-runs in the normal case.
 
-`usePageView(key: string, properties?: JsonObject)` runs an effect keyed on `key`: it calls
-`client.page(properties)` whenever `key` changes, including the first mount. Before the first
+`usePageView(key: string, properties?: JsonObject)` runs an effect keyed on `key` (and
+`client`): it calls `client.page(properties)` whenever `key` changes, including the first mount. Before the first
 call it checks `client.config.autocapture.pageViews`; if that is `true` and
 `process.env.NODE_ENV !== "production"`, it logs exactly once per page load, through
 `console.warn`, the message
@@ -414,14 +483,17 @@ never change `kansoku-js` defaults, and double counting is the application's mis
 fix.
 
 `useIdentify(userId: string | undefined, traits?: JsonObject)` runs an effect keyed on `userId`
-only (traits are read from a ref so a new object literal each render does not re-identify). It
+(and `client`) only: traits are read from a ref so a new object literal each render does not
+re-identify, the "latest ref" pattern React recommends until `useEffectEvent` is available
+across the whole peer range. It
 calls `client.identify(userId, traits)` when `userId` is a non-empty string and differs from the
 last identified value held in a ref; it does nothing when `userId` becomes `undefined`, because
 logout semantics (`reset()`) are the application's explicit decision.
 
 `useExperiment(experiment: string, variant: string, properties?: JsonObject)` runs an effect
-keyed on `experiment` and `variant` that calls `client.experiment(experiment, variant,
-properties)`. It never passes the `options` argument, so `force` is never set and the default
+keyed on `experiment` and `variant` (and `client`) that calls `client.experiment(experiment,
+variant, properties)`, with `properties` read from a ref like `useIdentify`'s traits. It never
+passes the `options` argument, so `force` is never set and the default
 per-session dedupe applies. It adds no dedupe of its own; `kansoku-js` already emits once per
 session per pair, and the hook documents that in its doc comment so a future reader does not
 add a second layer.
@@ -454,7 +526,11 @@ without throwing.
 Router example that shows no extra code is needed for page views, an explicit `usePageView`
 example that passes `autocapture: { pageViews: false }`, `useIdentify` on login, `useExperiment`
 with a note that exposure is deduped per session, how to reach `flush`/`reset`/`group` through
-`useKansoku`, and the SSR behaviour.
+`useKansoku`, the SSR behaviour, the lifecycle (the provider starts and stops a client it
+created and never shuts it down; pass `client` to manage the lifecycle yourself), and the
+module format: the package is ESM-only, Node 20.19 and later `require()` it without
+configuration, and Jest in its default CommonJS mode needs `kansoku-react` and `kansoku-js`
+added to its ESM transform allowlist (`transformIgnorePatterns`) or Jest's native ESM mode.
 
 The ADR "React binding boundary" is created in `docs/adr/` following
 `agents/skills/exec-plan/ADR.md` (allocate the handle with `okf id next`, validate with
@@ -479,15 +555,16 @@ Add dependencies to the React package (run inside its directory so Bun writes to
 
 ```bash
 cd packages/kansoku-react
-bun add --peer react@^18.0.0 || ^19.0.0
 bun add --dev react@19.3.1 react-dom@19.3.1 @types/react@19.3.0 @types/react-dom@19.3.0 @testing-library/react@16.3.3 kansoku-js@workspace:*
 cd ../..
 ```
 
-If `bun add --peer` does not accept the range syntax, edit `peerDependencies` in
-`packages/kansoku-react/package.json` by hand to `"react": "^18.0.0 || ^19.0.0"` and
-`"kansoku-js": "^0.1.0"`, then run `bun install` at the root. Never write a `workspace:` range
-under `peerDependencies`; it is published verbatim by `npm publish`.
+Then confirm `peerDependencies` in `packages/kansoku-react/package.json` reads
+`"react": "^18.0.0 || ^19.0.0"`, `"kansoku-js": "^0.1.0"`, and `"@types/react": ">=18"`, with
+`"peerDependenciesMeta": { "@types/react": { "optional": true } }` (edit by hand if EP-1 left
+anything else; the `||` range and the meta block are simpler to write than to pass through
+`bun add --peer`), and run `bun install` at the root. Never write a `workspace:` range under
+`peerDependencies`; it is published verbatim by `npm publish`.
 
 Create the modules listed in Context and Orientation, then type-check and build:
 
@@ -495,16 +572,16 @@ Create the modules listed in Context and Orientation, then type-check and build:
 bun run --filter kansoku-react typecheck
 just build
 head -1 packages/kansoku-react/dist/index.js
-head -1 packages/kansoku-react/dist/index.cjs
 ls packages/kansoku-react/dist
 ```
 
-Expected transcript for the last three commands:
+Expected transcript for the last two commands (the listing also contains one `.d.ts` per source
+module, such as `context.d.ts`, `provider.d.ts`, and a `hooks/` directory, and no `.cjs` or
+`.d.cts` file):
 
 ```text
 "use client";
-"use client";
-index.cjs  index.d.cts  index.d.ts  index.js  index.js.map  index.cjs.map
+index.d.ts  index.js  index.js.map  …
 ```
 
 Run the DOM tests and the SSR test:
@@ -523,9 +600,10 @@ bun test v1.4.2
 
 packages/kansoku-react/test/provider.test.tsx:
 ✓ KansokuProvider creates one client from options and shares it through useKansoku
-✓ KansokuProvider does not shut down a client passed in through the client prop
-✓ KansokuProvider shuts down a client it created when it unmounts for real
-✓ KansokuProvider survives StrictMode double-mount without shutting down its client
+✓ KansokuProvider leaves a client passed in through the client prop untouched
+✓ KansokuProvider starts a client it created and stops it on unmount
+✓ KansokuProvider under StrictMode restarts its client and records one initial page_view
+✓ KansokuProvider does not re-render consumers when it re-renders
 ✓ useKansoku throws outside a provider in the browser
 
 packages/kansoku-react/test/hooks.test.tsx:
@@ -538,7 +616,7 @@ packages/kansoku-react/test/hooks.test.tsx:
 ✓ useExperiment under StrictMode emits exactly one experiment_viewed per pair
 ✓ useExperiment emits again when the variant changes
 
- 13 pass
+ 14 pass
  0 fail
 ```
 
@@ -577,11 +655,17 @@ provider twice (two sibling providers) creates two distinct clients with differe
 `getAnonymousId()` results only when their storage prefixes differ; with the same prefix they
 share the persisted anonymous ID, which is correct behaviour, so the test uses `storage:
 "memory"` to show two instances. Passing `client` instead of `options` and unmounting the
-provider leaves `client.stats` and the mock untouched (no final flush request from the
-provider); passing `options` and unmounting through `unmount()` from Testing Library results in
-one additional flush request if events were queued, proving `shutdown` ran. Mounting a provider
-inside `<React.StrictMode>` and then tracking an event after the double-mount succeeds and the
-request is sent, proving the StrictMode cleanup did not shut the client down.
+provider leaves `client.stats`, the mock, and `history.pushState` untouched (no flush request
+from the provider, no patch removed). Passing `options` (with `autocapture.pageViews` left on
+for this test) results in `history.pushState` being wrapped only after the effect ran and one
+`page_view` request; unmounting through `unmount()` from Testing Library restores the original
+`history.pushState` and produces one additional flush request if events were queued, proving
+`stop()` ran. Mounting a provider inside `<React.StrictMode>` records exactly one `page_view`
+for the initial URL, leaves `history.pushState` wrapped, and a `track` call after the
+double-mount is sent, proving the restart left the client active. A consumer component that
+counts its renders re-renders zero times when the provider re-renders with the same client
+(force the provider to re-render through a parent state change), proving the memoised context
+value.
 
 `useKansoku` outside a provider: in the DOM test, calling it through `renderHook` without a
 wrapper rejects with the error message `useKansoku must be used inside <KansokuProvider>`.
@@ -613,9 +697,9 @@ the test asserts `typeof window === "undefined"`, that `renderToString` of a pro
 `options` plus components calling all five hooks returns a non-empty string, that the fetch mock
 recorded zero requests, and that `useKansoku()` rendered outside any provider does not throw.
 
-Build: `just build` succeeds; `head -1` of both JavaScript outputs is `"use client";`;
-`dist/index.d.ts` declares `KansokuProvider`, `useKansoku`, `useTrack`, `usePageView`,
-`useIdentify`, `useExperiment`, and `createNoopClient`.
+Build: `just build` succeeds; `head -1 dist/index.js` is `"use client";`; there is no
+`dist/index.cjs`; `dist/index.d.ts` declares `KansokuProvider`, `useKansoku`, `useTrack`,
+`usePageView`, `useIdentify`, `useExperiment`, and `createNoopClient`.
 
 Repository checks: `just check` (type-check, lint, format, and, after EP-1, the ADR validation)
 passes, and `okf validate docs/adr --strict --profile docs/adr/profile.dhall --profile-enforce
@@ -632,9 +716,10 @@ Every step is additive and repeatable. Re-running `bun add` with the same versio
 `bun install` at the root re-links the workspace. `just build` overwrites `dist/` completely, so
 a half-finished build is fixed by running it again. Tests have no persistent state: each test
 constructs its client with `storage: "memory"` or clears `localStorage` in `beforeEach`, and the
-fetch mock is recreated per test. If the StrictMode shutdown test is flaky, the cause is the
-cleanup timing described in Milestone 1; make the deferred shutdown cancellable and await
-`act()` in the test rather than adding sleeps. If the server-rendering test finds `window`
+fetch mock is recreated per test. The StrictMode test has no timing in it: `start()` and
+`stop()` are synchronous and idempotent, so if it fails the provider is calling something other
+than that pair (never `shutdown()`) or `kansoku-js` is recording a second initial `page_view`
+after a restart, which is a bug in EP-3's dedupe key, not a reason to add sleeps. If the server-rendering test finds `window`
 defined, `KANSOKU_TEST_NO_DOM=1` was not exported for that command; rerun it with the variable
 set rather than changing the test. The ADR allocation is safe to repeat: `okf id next`
 only reads; if validation fails, fix the frontmatter and run it again. Nothing in this plan
@@ -651,9 +736,10 @@ workspace, `packages/kansoku-react` scaffold with the export map, `scripts/build
 `bunfig.toml` preload, `test/setup/dom.ts`, `test/helpers/fetch-mock.ts`, and the `docs/adr/`
 bundle with `profile.dhall`.
 
-Runtime dependencies: none. Peer dependencies: `react` `^18.0.0 || ^19.0.0` and `kansoku-js`
+Runtime dependencies: none. Peer dependencies: `react` `^18.0.0 || ^19.0.0`, `kansoku-js`
 `^0.1.0` as a literal range kept in step by the changesets fixed group (never `workspace:`,
-because `npm publish` does not rewrite it). Development dependencies: `kansoku-js`
+because `npm publish` does not rewrite it), and `@types/react` `>=18` marked optional in
+`peerDependenciesMeta`. Development dependencies: `kansoku-js`
 `workspace:*` for local resolution, `react`, `react-dom`, `@types/react`, `@types/react-dom`
 19.3.x and `@testing-library/react` 16.3.3.
 `react-dom` is used only by tests (`react-dom/server` for SSR, Testing Library for DOM mounts).
@@ -668,7 +754,7 @@ export type KansokuProviderProps =
 
 export interface KansokuContextValue { client: KansokuClient }
 
-export function KansokuProvider(props: KansokuProviderProps): JSX.Element
+export function KansokuProvider(props: KansokuProviderProps): ReactElement
 export function useKansoku(): KansokuClient
 export function useTrack(): KansokuClient["track"]
 export function usePageView(key: string, properties?: JsonObject): void
@@ -676,6 +762,9 @@ export function useIdentify(userId: string | undefined, traits?: JsonObject): vo
 export function useExperiment(experiment: string, variant: string, properties?: JsonObject): void
 export function createNoopClient(): KansokuClient
 ```
+
+`ReactElement` and `ReactNode` are imported as types from `react`; the global `JSX` namespace
+was removed in `@types/react` 19, so `JSX.Element` must not appear anywhere in the package.
 
 Consumers of this plan: EP-5 (`docs/plans/5-examples-live-contract-conformance-and-real-browser-smoke-test.md`)
 builds the `examples/react-vite` application on `KansokuProvider`, `useTrack`, and

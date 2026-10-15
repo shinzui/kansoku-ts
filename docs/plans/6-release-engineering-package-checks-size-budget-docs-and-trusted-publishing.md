@@ -11,6 +11,12 @@ provenance:
     model: "claude-fable-5-1"
     harness: "claude-code"
     at: 2026-10-15T02:11:18Z
+  revisions:
+    - model: "claude-fable-5-1"
+      harness: "claude-code"
+      at: 2026-10-15T03:17:45Z
+      mode: "update"
+      note: "README/guide coverage for lifecycle, GPC, storage keys, dual-package hazard; unified peer range; ADR candidates extended"
 ---
 
 # Release engineering: package checks, size budget, docs, and trusted publishing
@@ -27,8 +33,8 @@ This repository, `kansoku-ts`, builds two npm packages for the Kansoku analytics
 and delivers them to a Kansoku server, and `kansoku-react`, a thin React binding over it. Other
 plans build the code. This plan makes the two packages *publishable* and *published*: a reader
 who clones the repository can prove in one command that each package has a correct export map,
-correct TypeScript declarations for both module systems, and a gzip size under a published
-budget; a pull request shows exactly which files a release would contain; a push to `master`
+correct TypeScript declarations under every resolution mode an ESM-only package supports, and a
+gzip size under a published budget; a pull request shows exactly which files a release would contain; a push to `master`
 with a pending changeset versions both packages in lockstep, writes their changelogs, and
 publishes them to npm from GitHub Actions without any long-lived secret, with provenance
 attestations that link each tarball to the workflow run that built it; and a developer who
@@ -85,8 +91,10 @@ allows reusing a version number).
 - Decision: Verify the published package shape with `publint` and `@arethetypeswrong/cli`
   against the *packed tarball* (`attw --pack`), not against the source tree, and make both part
   of `just check` so a broken export map fails locally before it fails on npm.
-  Rationale: The export map, `.d.ts`/`.d.cts` pair, and `files` whitelist are exactly the things
-  a unit test cannot see; both tools inspect what a consumer would install.
+  Rationale: The export map, declaration files, and `files` whitelist are exactly the things
+  a unit test cannot see; both tools inspect what a consumer would install. `attw` runs with
+  `--profile esm-only`, which accepts the one expected finding of an ESM-only package (the
+  `node16` CommonJS resolution reaching an ES module) and still fails on every other problem.
   Date: 2026-10-14
 
 - Decision: Enforce gzip size budgets in a repository script (`scripts/check-size.ts`) that
@@ -151,29 +159,28 @@ two publishable packages are `packages/kansoku-js` and `packages/kansoku-react`.
 client after EP-2 through EP-4), a `test/` directory, a `tsconfig.json` for type-checking, and a
 `tsconfig.build.json` used only for declaration emit. The shared build script
 `scripts/build.ts <package-dir>` produces, inside `<package-dir>/dist/`, an ESM bundle
-`index.js`, a CommonJS bundle `index.cjs`, linked source maps, the TypeScript declaration file
-`index.d.ts` emitted by `tsc`, and a copy of it named `index.d.cts` so CommonJS consumers
-resolve declarations too. The dev shell (enter it with `nix develop`, or let `direnv` do it)
+`index.js`, its linked source map, and the TypeScript declaration files emitted by `tsc`
+(`index.d.ts` plus one per module). Both packages are ESM-only (MasterPlan decision of
+2026-10-14); CommonJS consumers rely on Node's `require(esm)`, and the manifests declare
+`"engines": { "node": ">=20.19.0" }` for that reason. The dev shell (enter it with `nix develop`, or let `direnv` do it)
 provides `bun`, `tsc` (TypeScript 7.0.2), `oxlint`, `oxfmt`, `just`, `node` 22, and `npm`
 10.9.9. `just --list` shows the recipes; `just check` is the aggregate check EP-1 defined
 (typecheck, lint, format check, contract regeneration check, build), and `.github/workflows/ci.yml`
 runs it on pull requests and pushes.
 
 Each package manifest already declares `"type": "module"`, `"sideEffects": false`, a `"files"`
-whitelist of `dist`, `README.md`, and `CHANGELOG.md`, and this export map:
+whitelist of `dist`, `README.md`, and `CHANGELOG.md`, the `engines` floor, and this export map:
 
 ```json
 {
+  "type": "module",
   "exports": {
-    ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
-    },
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts"
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "engines": { "node": ">=20.19.0" }
 }
 ```
 
@@ -194,8 +201,11 @@ and files and reports mistakes in the export map, `main`/`module`/`types` fields
 whitelist, and module-format consistency, the way a consumer's bundler or Node would hit them.
 **Are the types wrong** (`@arethetypeswrong/cli`, version 0.18.5, binary `attw`) packs a
 package the way `npm publish` would and resolves its TypeScript declarations under every
-resolution mode (`node10`, `node16` CommonJS and ESM, `bundler`), reporting problems such as
-"masquerading as ESM" when a CommonJS entry is paired with an ESM-only declaration file. A
+resolution mode (`node10`, `node16` CommonJS and ESM, `bundler`), reporting problems such as a
+declaration file whose module format disagrees with the JavaScript it describes. Its
+`--profile esm-only` flag tells it the package intentionally ships no CommonJS entry, so the
+`node16` CommonJS column's "ESM (dynamic import only)" finding is accepted while every other
+problem still fails the check. A
 **size budget** is a maximum compressed size for a built artifact that a check enforces;
 `gzip` is the compression browsers negotiate by default, so gzip size approximates what a page
 downloads. **Changesets** is a release tool: a *changeset* is a small Markdown file under
@@ -214,7 +224,8 @@ it; consumers see it on the package page and can verify it with `npm audit signa
 including packing the tarball and printing its contents, without contacting the registry's
 publish endpoint. A **dist-tag** is a named pointer such as `latest` to a published version. A
 **peer dependency** is a package the consumer must install alongside yours rather than one you
-bundle; `kansoku-react` peer-depends on `kansoku-js` and on `react`.
+bundle; `kansoku-react` peer-depends on `kansoku-js`, on `react`, and optionally on
+`@types/react`.
 
 ### What the npm documentation says, and what it does not
 
@@ -263,10 +274,14 @@ which exist and create the missing ones:
 2. Contract vendoring and refresh policy for the server's OpenAPI document and schema catalog
    (assigned to EP-1).
 3. Delivery semantics and exit transport: batch-only delivery, retry classes, 413 splitting,
-   keepalive `fetch` instead of `sendBeacon` (assigned to EP-2).
-4. Identity and session persistence policy: storage keys, inactivity timeout, `reset`
-   behaviour (assigned to EP-2).
-5. Lockstep versioning and trusted publishing (this plan).
+   keepalive `fetch` instead of `sendBeacon`, and the reversible `start`/`stop` lifecycle
+   (assigned to EP-2).
+4. Identity and session persistence policy: storage keys, the per-tab `sessionStorage` queue
+   mirror versus the shared identity adapter, inactivity timeout, `reset` behaviour (assigned
+   to EP-2).
+5. Lockstep versioning and trusted publishing, including the ESM-only publishing decision
+   (one module format, `require(esm)` as the CommonJS path, the `engines` floor, and the
+   `attw` profile) (this plan).
 
 The only server ADR this plan cites is `mori://shinzui/kansoku/okf/adrs/concepts/ADR-1`
 (SDK-grade ingest contract boundaries), because `docs/guides/delivery-and-privacy.md` restates
@@ -285,9 +300,10 @@ files, or `files` whitelist would break a consumer, or when a built bundle excee
 budget. Add `publint` and `@arethetypeswrong/cli` as root dev dependencies at the exact
 versions named above. Add a `just check-packages` recipe that builds both packages (reusing
 EP-1's `just build`) and then runs `bunx publint packages/kansoku-js`, `bunx publint
-packages/kansoku-react`, `bunx attw --pack packages/kansoku-js`, and `bunx attw --pack
-packages/kansoku-react`; `attw` must report no problems in any resolution mode and `publint`
-must print "All good!". Write `scripts/check-size.ts`: it reads each package's
+packages/kansoku-react`, `bunx attw --pack --profile esm-only packages/kansoku-js`, and
+`bunx attw --pack --profile esm-only packages/kansoku-react`; `attw` must exit 0 under the
+`esm-only` profile (which accepts only the expected `node16` CommonJS finding for an ESM-only
+package) and `publint` must print "All good!". Write `scripts/check-size.ts`: it reads each package's
 `dist/index.js`, compresses it with `Bun.gzipSync`, prints a small table of raw and gzip bytes
 per package, compares against a budget map (`kansoku-js`: 10240 bytes, `kansoku-react`: 3072
 bytes), and exits non-zero naming the offender when a budget is exceeded. Expose it as `just
@@ -314,7 +330,8 @@ from `workspace:^` to `^0.0.0`; after `changeset version` runs it reads `^0.1.0`
 workspace linker still resolves it to the local package because the fixed group keeps the
 versions equal. Add to both manifests `"repository": { "type": "git", "url":
 "git+https://github.com/shinzui/kansoku-ts.git", "directory": "packages/<name>" }`,
-`"homepage"`, and `"keywords"`. Leave the `license` field alone in this milestone; Milestone 3
+`"homepage"`, and `"keywords"`, and confirm EP-1's `"engines": { "node": ">=20.19.0" }` is
+present (the `require(esm)` floor for an ESM-only package). Leave the `license` field alone in this milestone; Milestone 3
 sets it once the maintainer has chosen a license. Do not add `publishConfig.provenance`;
 provenance is controlled by the workflow environment so local dry runs and Bun tooling keep
 working.
@@ -369,21 +386,31 @@ no marketing. Write `packages/kansoku-js/README.md` covering installation, a fiv
 start, the full `KansokuOptions` and `KansokuClient` reference as documented in the MasterPlan's
 Integration Points (copy the final signatures from `packages/kansoku-js/src/types.ts` at the time
 of writing, since EP-2 and EP-3 own them), delivery semantics (batch endpoint, 202 partial
-acceptance, which responses are retried, 413 splitting, exit flush with keepalive `fetch`),
-privacy (no PII captured by default, `beforeSend`, `respectDoNotTrack`, `optOut`/`optIn`, what
-`reset` clears), the storage keys under the default prefix, schema version pinning with
+acceptance, which responses are retried, 413 splitting, exit flush with keepalive `fetch`), the
+lifecycle (`autoStart`, `start`, `stop`, `shutdown`, and that framework bindings drive the pair
+from their own lifecycle), privacy (no PII captured by default, `beforeSend`,
+`respectGlobalPrivacyControl`, `respectDoNotTrack`, `optOut`/`optIn`, what `reset` clears), the
+storage keys under the default prefix (identity and session in the selected adapter, the queue
+mirror in per-tab `sessionStorage`), the module format (ESM-only; Node 20.19 and later
+`require()` it; Jest's default CommonJS mode needs the package in its ESM transform
+allowlist), schema version pinning with
 `schemaVersions` and `TrackOptions.schemaVersion`, and troubleshooting for HTTP 401 (wrong or
 revoked write key), HTTP 413 (batch or event too large), and CORS failures (server
 `KANSOKU_CORS_ORIGINS` allowlist). Write `packages/kansoku-react/README.md` covering
-installation with the peer dependencies, `KansokuProvider` in both forms (existing client or
-options), every hook with a short example, server-side rendering behaviour, StrictMode and
-exposure dedupe, and the rule that `usePageView` requires `autocapture.pageViews: false`. Write
+installation with the peer dependencies (`react`, `kansoku-js`, and the optional
+`@types/react`), `KansokuProvider` in both forms (existing client, which the provider leaves
+alone, or options, for which it calls `start()` and `stop()` from an effect and never
+`shutdown()`), every hook with a short example, server-side rendering behaviour, StrictMode and
+exposure dedupe, the module format (ESM-only; Node 20.19 and later `require()` it; Jest's
+default CommonJS mode needs both packages in its ESM transform allowlist), and the rule that
+`usePageView` requires `autocapture.pageViews: false`. Write
 `docs/README.md` as an index, `docs/guides/getting-started.md` (run the server from the sibling
 checkout with its documented `just up`, `just migrate`, `just ch-migrate`, `just issue-key
 write`, and `just run` steps, then send one `page_view` from a static HTML page and read it back
 with `curl` against `/metrics/page-views` using a service token), `docs/guides/react.md`, and
 `docs/guides/delivery-and-privacy.md` (the contract restatement that cites
-`mori://shinzui/kansoku/okf/adrs/concepts/ADR-1`). Register the guides and both READMEs in
+`mori://shinzui/kansoku/okf/adrs/concepts/ADR-1`, plus the two opt-in privacy signals, Global
+Privacy Control and Do Not Track, and what each suppresses). Register the guides and both READMEs in
 `mori.dhall` under `docs` using `Schema.DocRef::{ key, kind = Schema.DocKind.Guide, audience =
 Schema.DocAudience.User, location = Schema.DocLocation.LocalFile "docs/guides/…" }` (READMEs use
 `DocKind.Reference`), then run `mori validate` and `mori register` so `mori registry docs
@@ -391,8 +418,10 @@ shinzui/kansoku-ts` lists them.
 
 Then perform the ADR work. Create the "Lockstep versioning and trusted publishing" record with
 the handle `okf id next` allocates, capturing the fixed group, the concrete peer range instead
-of `workspace:`, `npm publish` over `bun publish`, the manual bootstrap of first publishes, and
-the public-repository requirement for provenance. Run the distillation pass: list the five
+of `workspace:`, `npm publish` over `bun publish`, the manual bootstrap of first publishes, the
+public-repository requirement for provenance, and the ESM-only publishing decision (one module
+format, `require(esm)` as the CommonJS path, the `engines` floor, and the `attw`
+profile). Run the distillation pass: list the five
 candidates from Context and Orientation, open `docs/adr/`, and for each candidate either confirm
 an existing record covers it or create it from the Decision Log and Surprises & Discoveries of
 the owning plan and the MasterPlan. Update `docs/adr/index.md` if the profile requires a
@@ -460,8 +489,8 @@ bun add -d publint@0.3.25 @arethetypeswrong/cli@0.18.5
 just build
 bunx publint packages/kansoku-js
 bunx publint packages/kansoku-react
-bunx attw --pack packages/kansoku-js
-bunx attw --pack packages/kansoku-react
+bunx attw --pack --profile esm-only packages/kansoku-js
+bunx attw --pack --profile esm-only packages/kansoku-react
 ```
 
 Expected `publint` output for each package:
@@ -471,10 +500,11 @@ packages/kansoku-js
 All good!
 ```
 
-Expected `attw` output ends with a table in which every cell for `node10`, `node16 (from CJS)`,
-`node16 (from ESM)`, and `bundler` shows a check mark and the summary line reports no problems.
-A "Masquerading as ESM" or "Masquerading as CJS" cell means the `.d.cts` copy or the `require`
-condition is wrong; fix the build script or export map rather than ignoring the check.
+Expected `attw` output ends with a table in which the `node10`, `node16 (from ESM)`, and
+`bundler` cells show a check mark, the `node16 (from CJS)` cell shows the "ESM (dynamic import
+only)" marker that the `esm-only` profile accepts, and the command exits 0. Any other marker
+(for example "Resolution failed" or "Masquerading as CJS") means the export map or declaration
+emit is wrong; fix the build script or export map rather than ignoring the check.
 
 Create `scripts/check-size.ts`:
 
@@ -516,8 +546,8 @@ Add recipes to `justfile`:
 check-packages: build
     bunx publint packages/kansoku-js
     bunx publint packages/kansoku-react
-    bunx attw --pack packages/kansoku-js
-    bunx attw --pack packages/kansoku-react
+    bunx attw --pack --profile esm-only packages/kansoku-js
+    bunx attw --pack --profile esm-only packages/kansoku-react
 
 # Enforce gzip size budgets on built bundles
 check-size: build
@@ -581,9 +611,10 @@ experiment exposure, batched delivery with retries and exit flush; React provide
 Edit both `packages/*/package.json`: set `"version": "0.0.0"`, add the `repository`,
 `license`, `homepage` (`https://github.com/shinzui/kansoku-ts#readme`), and `keywords`
 (`analytics`, `kansoku`, `browser`, and for the React package `react`) fields, and in
-`packages/kansoku-react/package.json` set `"peerDependencies": { "kansoku-js": "^0.0.0",
-"react": "^18 || ^19" }` (keep `kansoku-js` also in `devDependencies` as `workspace:*` for
-tests). Add the root script `"release": "bun run build && bunx changeset publish"`. Then:
+`packages/kansoku-react/package.json` set the `kansoku-js` entry of `peerDependencies` to
+`"^0.0.0"`, leaving EP-4's `"react": "^18.0.0 || ^19.0.0"` and optional `"@types/react": ">=18"`
+entries and its `peerDependenciesMeta` as they are (keep `kansoku-js` also in `devDependencies`
+as `workspace:*` for tests). Add the root script `"release": "bun run build && bunx changeset publish"`. Then:
 
 ```bash
 bun install
@@ -684,10 +715,9 @@ Expected excerpt:
 npm notice package: kansoku-js@0.0.0
 npm notice Tarball Contents
 npm notice 1.2kB README.md
-npm notice 5.8kB dist/index.cjs
-npm notice 3.1kB dist/index.d.cts
 npm notice 3.1kB dist/index.d.ts
 npm notice 5.4kB dist/index.js
+npm notice 9.7kB dist/index.js.map
 npm notice 0.9kB package.json
 npm notice Publishing to https://registry.npmjs.org/ with tag latest and public access (dry-run)
 ```
@@ -817,7 +847,7 @@ Expected:
 ```text
 0.1.0
 0.1.0
-{ 'kansoku-js': '^0.1.0', react: '^18 || ^19' }
+{ 'kansoku-js': '^0.1.0', react: '^18.0.0 || ^19.0.0', '@types/react': '>=18' }
 ```
 
 Consumer smoke test, in a fresh directory outside the repository (for example under the
@@ -835,9 +865,11 @@ EOF
 bun run smoke.ts
 ```
 
-Expected: `0.1.0 function function`. Also confirm the CommonJS entry resolves:
+Expected: `0.1.0 function function`. Also confirm a CommonJS consumer on a supported Node can
+`require()` the ESM-only package:
 
 ```bash
+node --version   # 20.19 or later (22.12 or later on the 22 line) for require(esm)
 node -e "const k = require('kansoku-js'); console.log(k.version)"
 ```
 
@@ -855,10 +887,10 @@ beacon-friendly credential transport (credential in body or query) so browser SD
 ## Validation and Acceptance
 
 M1 is accepted when `just check` exits 0 on a clean checkout with both packages built, the two
-`publint` runs print "All good!", both `attw --pack` runs report no problems, `just check-size`
-prints `ok` for both packages, and deliberately breaking the export map (for example renaming
-`dist/index.d.cts` in a scratch copy) makes `attw` fail with a non-zero exit, proving the gate
-is live. CI on a pull request must run the same recipe.
+`publint` runs print "All good!", both `attw --pack --profile esm-only` runs exit 0, `just
+check-size` prints `ok` for both packages, and deliberately breaking the export map (for example
+renaming `dist/index.d.ts` in a scratch copy) makes `attw` fail with a non-zero exit, proving
+the gate is live. CI on a pull request must run the same recipe.
 
 M2 is accepted when `bunx changeset status` lists both packages in one fixed group bumping to
 `0.1.0`, `npm pack --dry-run` from each package directory lists exactly the whitelisted files,

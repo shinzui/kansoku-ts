@@ -11,6 +11,12 @@ provenance:
     model: "claude-fable-5-1"
     harness: "claude-code"
     at: 2026-10-15T02:11:18Z
+  revisions:
+    - model: "claude-fable-5-1"
+      harness: "claude-code"
+      at: 2026-10-15T03:17:45Z
+      mode: "update"
+      note: "Unify React peer range, add optional @types/react peer, prove sessionStorage in the DOM harness"
 ---
 
 # Workspace foundation, vendored Kansoku contracts, and generated wire types
@@ -44,9 +50,10 @@ sends an analytics event; it builds the floor every other plan in
 ## Progress
 
 - [ ] Milestone 1 — Bun workspace with two package scaffolds. `just build` produces
-  `packages/kansoku-js/dist/{index.js,index.cjs,index.d.ts,index.d.cts}` and the same four
-  files for `kansoku-react`; Node can `require` the CJS file and `import` the ESM file of
-  `kansoku-js` and read `version === "0.1.0"`; `just check` (typecheck, lint, format) passes.
+  `packages/kansoku-js/dist/{index.js,index.js.map,index.d.ts}` (plus per-module `.d.ts`
+  files) and the same for `kansoku-react`; Node can `import` the ESM entry of `kansoku-js` and,
+  through `require(esm)` on the dev shell's Node 22, also `require()` it, reading
+  `version === "0.1.0"` both ways; `just check` (typecheck, lint, format) passes.
 - [ ] Milestone 2 — Vendored contracts and generated wire types. `contracts/openapi.json`,
   `contracts/events.json`, and `contracts/KANSOKU_COMMIT` exist and match server commit
   `d61cf0c4b53bc6f9128f8589cd287c107f394427`; `just generate-schema` writes
@@ -130,6 +137,17 @@ sends an analytics event; it builds the floor every other plan in
   bundle with one real record proves the validation gate against something non-trivial.
   Date: 2026-10-14
 
+- Decision: Build and publish both packages as ESM-only: one `Bun.build` call with
+  `format: "esm"`, one `dist/index.d.ts` set, an export map with `types` and `default` conditions
+  only, `main` and `types` kept for legacy resolvers, no `module` field, and
+  `"engines": { "node": ">=20.19.0" }`. The per-package `banner` option stays because Bun hoists
+  external `import` statements above a source-level `"use client"` directive even in ESM output.
+  Rationale: The MasterPlan's ESM-only decision of 2026-10-14. Every supported Node release can
+  `require()` an ES module, so a second build, a `.d.cts` copy, and the dual-package hazard buy
+  nothing; the banner finding comes from a 2026-10-14 `Bun.build` 1.4.2 experiment on a module
+  with an external `react` import.
+  Date: 2026-10-14
+
 
 ## Outcomes & Retrospective
 
@@ -203,9 +221,12 @@ There is no `node_modules`, no `bun.lock`, no `bunfig.toml`, no `packages/`, `co
   are each their own package. `bun install` links them together so `kansoku-react` can import
   `kansoku-js` from source.
 - **ESM and CJS**: the two JavaScript module systems, `import` (ECMAScript modules) and
-  `require` (CommonJS). Both packages ship both so bundlers, Node, and older tooling work.
-- **Declaration file**: a `.d.ts` file describing a module's types without its code. A
-  `.d.cts` file is the same for CommonJS consumers.
+  `require` (CommonJS). Both packages ship ESM only. CommonJS consumers still work because
+  Node loads ES modules through `require()` (`require(esm)`, unflagged since Node 20.19 and
+  22.12, which is every Node release still supported in 2026); the manifests declare that floor
+  in `engines`.
+- **Declaration file**: a `.d.ts` file describing a module's types without its code. With one
+  module format there is one set of them.
 - **Export map**: the `exports` field of `package.json`, which tells Node and bundlers which
   file to load for `import` versus `require` and where the types are.
 - **OpenAPI document**: a JSON description of an HTTP API: its paths, request and response
@@ -216,7 +237,7 @@ There is no `node_modules`, no `bun.lock`, no `bunfig.toml`, no `packages/`, `co
 - **Wire types**: TypeScript types that mirror the JSON the server accepts and returns.
   `openapi-typescript` generates them from the OpenAPI document so nobody hand-writes them.
 - **happy-dom**: a JavaScript implementation of browser APIs (`document`, `window`,
-  `location`, `history`, `localStorage`) that lets DOM code run under `bun test`.
+  `location`, `history`, `localStorage`, `sessionStorage`) that lets DOM code run under `bun test`.
 - **ADR**: an architecture decision record, one Markdown file per durable decision. **OKF**
   is the Open Knowledge Format the portfolio uses for such bundles, validated by the `okf`
   command (version 0.9.0.0 is installed). A **profile** is a Dhall descriptor stating the
@@ -247,8 +268,8 @@ in `mori://shinzui/kansoku` (artifact-level Mori URI pending). The portfolio pre
 Bun-built TypeScript client is `/Users/shinzui/Keikaku/bokuno/shomei-ts-client`: its
 `package.json` runs `openapi-typescript openapi.json --output src/schema.ts` and its
 `build.ts` calls `Bun.build` twice (CJS then ESM) and writes a per-directory `package.json`
-marker; this plan adapts the generation step and the double build but changes the output
-layout and the declaration strategy as recorded in the Decision Log.
+marker; this plan adapts the generation step but builds ESM only and changes the output layout
+and the declaration strategy as recorded in the Decision Log.
 
 ### Server facts this plan relies on
 
@@ -301,7 +322,8 @@ changing its `include` to `["scripts", "test", "*.ts"]`.
 Create `packages/kansoku-js/` with: `package.json` (name `kansoku-js`, version `0.1.0`,
 description "Browser SDK for the Kansoku analytics service", `"type": "module"`,
 `"sideEffects": false`, `"files": ["dist", "README.md", "CHANGELOG.md"]`, the export map from
-the MasterPlan reproduced in Interfaces and Dependencies, `"main"`, `"module"`, `"types"`,
+the MasterPlan reproduced in Interfaces and Dependencies, `"main"` and `"types"` (no
+`"module"` field), `"engines": { "node": ">=20.19.0" }`,
 `"license"` left as `"UNLICENSED"` with a comment-free TODO recorded in `docs/plans/6-…`'s
 scope, and scripts `build`, `typecheck`, `test`); `tsconfig.json` extending
 `../../tsconfig.base.json` with `types: ["bun"]` and `include: ["src", "test"]` (type-checks
@@ -313,31 +335,37 @@ asserting `version` equals the `version` field of the package's `package.json`; 
 one-paragraph `README.md` plus an empty `CHANGELOG.md` (the release plan fills them).
 
 Create `packages/kansoku-react/` the same way (name `kansoku-react`, description "React
-bindings for kansoku-js") with `peerDependencies` `{ "react": ">=18", "kansoku-js":
-"^0.1.0" }`, `devDependencies` `{ "kansoku-js": "workspace:*", "react": "^19.3.1",
-"@types/react": "^19" }`, and `peerDependenciesMeta` marking neither optional. Its
-`src/index.ts` exports `version` and re-exports nothing else yet.
+bindings for kansoku-js") with `peerDependencies` `{ "react": "^18.0.0 || ^19.0.0",
+"kansoku-js": "^0.1.0", "@types/react": ">=18" }`, `peerDependenciesMeta`
+`{ "@types/react": { "optional": true } }`, and `devDependencies` `{ "kansoku-js":
+"workspace:*", "react": "^19.3.1", "@types/react": "^19" }`. The React peer range is the one
+the MasterPlan fixes for every plan; `@types/react` is an optional peer because the emitted
+declaration files import React types (the convention zustand and Radix use). EP-4 owns the
+final values. Its `src/index.ts` exports `version` and re-exports nothing else yet.
 
 Create `scripts/build.ts`, run as `bun scripts/build.ts <package-dir>`. It reads the target
 `package.json`, removes `<package-dir>/dist`, computes the externals as every key of
 `dependencies` and `peerDependencies` plus `react/jsx-runtime` when `react` is a peer, then
-calls `Bun.build` with `entrypoints: ["src/index.ts"]`, `outdir: "dist"`, `target: "browser"`,
-`format: "esm"`, `naming: "index.js"`, `sourcemap: "linked"`, `minify: false`, `external`;
-calls it again with `format: "cjs"` and `naming: "index.cjs"`; then runs `tsc -p
-tsconfig.build.json` in the package directory and copies `dist/index.d.ts` to
-`dist/index.d.cts`. It exits non-zero and prints the bundler's messages when any step fails.
-Use `Bun.spawn` or the `$` shell helper from `bun` for `tsc`, with `cwd` set to the package
-directory so the shell's `tsc` binary is used.
+calls `Bun.build` once with `entrypoints: ["src/index.ts"]`, `outdir: "dist"`,
+`target: "browser"`, `format: "esm"`, `naming: "index.js"`, `sourcemap: "linked"`,
+`minify: false`, `external`; then runs `tsc -p tsconfig.build.json` in the package directory,
+which emits `dist/index.d.ts` and one `.d.ts` per source module. There is no CommonJS build and
+no `.d.cts` copy (Decision Log). It exits non-zero and prints the bundler's messages when any
+step fails. Use `Bun.spawn` or the `$` shell helper from `bun` for `tsc`, with `cwd` set to the
+package directory so the shell's `tsc` binary is used.
 
 The script also supports a per-package banner. It reads the optional manifest field
 `"kansoku": { "banner": "<text>" }` from the package's `package.json` and, when present,
-passes it as the `banner` option to both `Bun.build` calls so the text is the first line of
-`dist/index.js` and `dist/index.cjs`. This exists for React's `"use client"` directive, which
-must be the first statement of a module to count as a directive: Bun 1.4.2's bundler keeps a
-source-level `"use client"` only in ESM output and, in CJS output, places it after its module
-helpers where it is an inert string. `kansoku-js` leaves the field unset; `docs/plans/4-…`
-sets `"kansoku": { "banner": "\"use client\";" }` in `packages/kansoku-react/package.json`
-and needs no build-script change. The script prints the banner it applied, if any.
+passes it as the `banner` option to `Bun.build` so the text is the first line of
+`dist/index.js`. This exists for React's `"use client"` directive, which must sit in the
+module's directive prologue (before any statement, including `import` declarations) to count:
+verified on 2026-10-14 with Bun 1.4.2, a module whose first line is `"use client"` and which
+imports from the external `react` is emitted with the `import` statement first and the string
+after it, where it is an inert expression; with the banner the directive is line 1 and the
+source-level copy that follows is harmless. `kansoku-js` leaves the field unset;
+`docs/plans/4-…` sets `"kansoku": { "banner": "\"use client\";" }` in
+`packages/kansoku-react/package.json` and needs no build-script change. The script prints the
+banner it applied, if any.
 
 Update the `justfile`: keep `default` and `install`; make `typecheck` run `tsc --noEmit -p
 tsconfig.json` for the root and for each package; add `build` (runs `scripts/build.ts` for
@@ -353,9 +381,10 @@ test in `docs/plans/5-…` import both packages through their export maps from t
 `.gitignore` only if not already covered (`dist` already is).
 
 Acceptance: `just install`, `just check`, `just test`, and `just build` succeed from a fresh
-clone inside `nix develop`; the eight `dist` files exist; Node loads both module formats of
-`kansoku-js` and reads `version`; `bunx publint packages/kansoku-js` reports no errors
-(informational here; `docs/plans/6-…` makes it a gate).
+clone inside `nix develop`; `dist/index.js`, `dist/index.js.map`, and `dist/index.d.ts` exist in
+both packages; Node `import`s the `kansoku-js` entry and `require()`s it (Node 22's
+`require(esm)`), reading `version` both ways; `bunx publint packages/kansoku-js` reports no
+errors (informational here; `docs/plans/6-…` makes it a gate).
 
 ### Milestone 2 — Vendored server contracts, sync script, and generated wire types
 
@@ -465,8 +494,9 @@ covering recording (including the `keepalive` flag and lower-cased headers), ord
 playback, the default, the network-error rejection, and that `hang()` has not settled after
 the test yields. Add `test/setup/dom.test.ts` asserting `typeof document ===
 "object"`, `location.origin === "http://localhost:3000"`, that `history.pushState({}, "",
-"/pricing")` changes `location.pathname`, and that `localStorage.setItem` followed by
-`getItem` round-trips.
+"/pricing")` changes `location.pathname`, and that `localStorage.setItem` and
+`sessionStorage.setItem` each followed by `getItem` round-trip (`docs/plans/2-…` mirrors the
+pending queue to `sessionStorage`, so the harness must prove it exists).
 
 Acceptance: `just test` runs the package `version` tests, the contract tests, the DOM
 sample, and the fetch-mock tests under happy-dom and reports zero failures, then runs the
@@ -564,15 +594,16 @@ resolves; see the Decision Log before changing `minimumReleaseAge`.
 Expected tail of `just build`:
 
 ```text
-kansoku-js: dist/index.js, dist/index.cjs, dist/index.d.ts, dist/index.d.cts
-kansoku-react: dist/index.js, dist/index.cjs, dist/index.d.ts, dist/index.d.cts
+kansoku-js: dist/index.js, dist/index.js.map, dist/index.d.ts
+kansoku-react: dist/index.js, dist/index.js.map, dist/index.d.ts
 ```
 
-Verify both module formats load under Node and that the export map is well formed:
+Verify the ESM entry loads under Node through both `import` and `require()` (the dev shell's
+Node 22 supports `require(esm)`) and that the export map is well formed:
 
 ```bash
-node -e 'console.log(require("./packages/kansoku-js/dist/index.cjs").version)'
 node --input-type=module -e 'import("./packages/kansoku-js/dist/index.js").then(m => console.log(m.version))'
+node -e 'console.log(require("./packages/kansoku-js/dist/index.js").version)'
 bunx publint packages/kansoku-js
 bunx publint packages/kansoku-react
 ```
@@ -727,8 +758,9 @@ Required acceptance for the whole plan, each observable from a fresh clone insid
 `nix develop`:
 
 1. `just install && just check && just test && just build` exits 0.
-2. The eight `dist` files exist, Node prints `0.1.0` for both the CJS and ESM entry of
-   `kansoku-js`, and `bunx publint` reports no errors for either package.
+2. `dist/index.js`, `dist/index.js.map`, and `dist/index.d.ts` exist in both packages, Node
+   prints `0.1.0` for the `kansoku-js` entry through both `import` and `require()`, and
+   `bunx publint` reports no errors for either package.
 3. `contracts/KANSOKU_COMMIT` contains `d61cf0c4b53bc6f9128f8589cd287c107f394427`;
    `just check-contracts` exits 0 on a clean tree and 1 after the probe edit.
 4. `just test` runs `bun test` under happy-dom, where `test/setup/dom.test.ts` passes and
@@ -783,8 +815,8 @@ registration; `DeterminateSystems/nix-installer-action` in CI. npm package versi
 plan are upper bounds resolved by Bun on the day of implementation and recorded in `bun.lock`;
 the Nix-shell tool versions are exact pins from `nix/tooling-sources.json`.
 
-Package export map, identical in both packages (the `types` key precedes `default` inside
-each condition):
+Package export map, identical in both packages (ESM-only, so no `require` condition; the
+`types` key precedes `default`):
 
 ```json
 {
@@ -792,26 +824,22 @@ each condition):
   "sideEffects": false,
   "files": ["dist", "README.md", "CHANGELOG.md"],
   "exports": {
-    ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
-    },
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts"
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "engines": { "node": ">=20.19.0" }
 }
 ```
 
 Build script contract: `bun scripts/build.ts <package-dir>` produces exactly
-`dist/index.js` (ESM), `dist/index.cjs` (CJS), `dist/index.js.map`, `dist/index.cjs.map`,
-`dist/index.d.ts` plus per-module `.d.ts` files, and `dist/index.d.cts`; externals are the
-package's `dependencies` and `peerDependencies` (and `react/jsx-runtime` when `react` is a
-peer). When the package manifest has `"kansoku": { "banner": "<text>" }`, that text is
-passed as `banner` to both `Bun.build` calls and becomes the first line of both JavaScript
-outputs. Later plans must not add a second build path; a package that needs a leading
-directive sets the manifest field instead.
+`dist/index.js` (ESM), `dist/index.js.map`, and `dist/index.d.ts` plus per-module `.d.ts`
+files; there is no CommonJS output. Externals are the package's `dependencies` and
+`peerDependencies` (and `react/jsx-runtime` when `react` is a peer). When the package manifest
+has `"kansoku": { "banner": "<text>" }`, that text is passed as `banner` to `Bun.build` and
+becomes the first line of `dist/index.js`. Later plans must not add a second build path or a
+second module format; a package that needs a leading directive sets the manifest field instead.
 
 Vendored contract files: `contracts/openapi.json`, `contracts/events.json`,
 `contracts/KANSOKU_COMMIT` (forty hex characters and a newline). Generated types:

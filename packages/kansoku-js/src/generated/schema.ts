@@ -232,7 +232,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Distinct nonempty session IDs over a positive half-open range of at most 366 days; at most 10000 complete points. Only from, to and optional timeGrain are supported here; other parameters return HTTP 400. */
+        /** @description Whole retained web sessions keyed by account/source_service/nonempty session_id; assemble before selecting the start date or UTC bucket. Defaults: measure=count, day grain, no grouping, includeBots=false. bounce_rate is exactly one page_view and no engagement divided by all selected sessions; lifecycle/identity/exposure events are not engagement. average_duration_seconds includes every selected session, including zero-duration visits, and measures last minus first observed event including page_leave. Attribute grouping/filters select first page_view, else earliest event; entry_page/exit_page come from page views. Arbitrary prop: filters/grouping are rejected. Any bot event excludes the whole session unless includeBots=true. Empty ungrouped buckets return zero; nonexistent groups are omitted. One/two dimensions, at most 8 AND filters (100 in values, 1024 UTF-8 bytes per string, 16384 decoded bytes), positive half-open range at most 366 days, at most 10000 complete points. Late arrivals and retained-history changes can change start/attribution/duration. */
         get: operations["getMetricsSessions"];
         put?: never;
         post?: never;
@@ -2010,7 +2010,11 @@ export interface operations {
             query: {
                 from: string;
                 to: string;
+                groupBy?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                filter?: string[];
+                measure?: "count" | "bounce_rate" | "average_duration_seconds";
+                includeBots?: boolean;
             };
             header?: never;
             path?: never;
@@ -2028,7 +2032,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `to` or `from` */
+            /** @description Malformed request or `includeBots` or `measure` or `filter` or `timeGrain` or `groupBy` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;

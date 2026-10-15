@@ -39,6 +39,14 @@ const pageViewBots: Equal<
   boolean | undefined
 > = true
 
+type SessionQuery = paths["/metrics/sessions"]["get"]["parameters"]["query"]
+const sessionMeasure: Equal<
+  SessionQuery["measure"],
+  "count" | "bounce_rate" | "average_duration_seconds" | undefined
+> = true
+const sessionFilters: Equal<SessionQuery["filter"], string[] | undefined> = true
+const sessionBots: Equal<SessionQuery["includeBots"], boolean | undefined> = true
+
 test("wire types match the required event and response shapes", () => {
   expect([requiredKeys, ackType, retryable]).toEqual([true, true, true])
   expect(api.components.schemas.AnalyticsEvent.required).toEqual([
@@ -79,8 +87,15 @@ test("metric contracts preserve missing groups and repeatable filters", () => {
   ])
 })
 
-test("acquisition and web queries expose explicit bot and population controls", () => {
-  expect([acquisitionMeasure, acquisitionBots, pageViewBots]).toEqual([true, true, true])
+test("acquisition, sessions and web queries expose explicit bot and population controls", () => {
+  expect([
+    acquisitionMeasure,
+    acquisitionBots,
+    pageViewBots,
+    sessionMeasure,
+    sessionFilters,
+    sessionBots,
+  ]).toEqual([true, true, true, true, true, true])
   const query: AcquisitionQuery = {
     from: "2026-07-01",
     to: "2026-07-03",

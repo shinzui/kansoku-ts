@@ -10,201 +10,199 @@ provenance:
     model: "claude-fable-5-1"
     harness: "claude-code"
     at: 2026-10-15T15:01:32Z
+  reviews:
+    - model: "gpt-6-astra"
+      harness: "codex-cli"
+      at: 2026-10-15T15:43:16Z
+      verdict: "changes-requested"
+      note: "Original draft review found correctness gaps; findings corrected by the accompanying update, with native acceptance still required."
+  revisions:
+    - model: "gpt-6-astra"
+      harness: "codex-cli"
+      at: 2026-10-15T15:43:16Z
+      mode: "update"
+      note: "Reconcile first-release APIs, domain semantics, dependencies and acceptance with the source-validated MP-5 review."
 ---
 
 # Serve Kansoku MasterPlan 5: sentAt, beacon exit flush, bot flag, and identifyOnce
 
-This ExecPlan is a living document. Update its living sections and durable ADRs as work
-proceeds. It delivers the four browser-side inputs that the server initiative
-`mori://shinzui/kansoku/masterplans/5-act-on-rev-1-close-silent-loss-paths-add-metric-filters-and-enrich-web-analytics`
-expects from this repository but does not own: a `sentAt` stamp for clock-skew correction
-(server EP-29), a `sendBeacon` exit flush against the server's beacon route (server EP-39), a
-client-side bot flag the server's enrichment reads (server EP-33), and an `identifyOnce`
-helper for set-once user traits (server EP-40).
-
 
 ## Purpose / Big Picture
 
-After this plan, a browser whose clock runs ahead no longer loses events, because every
-request carries the time it was sent and the server corrects the skew; the last events before
-a navigation or tab close reach the server through the browser's beacon queue, including a
-new `page_leave` event with time on page; crawler traffic is flagged in `context.bot` so the
-server can exclude it from web metrics; and applications can record set-once traits such as
-`signup_source` with one call. Each capability is harmless against a server that has not yet
-shipped its counterpart, and each becomes typed and conformance-tested once the vendored
-contracts are refreshed at a server commit that includes it.
 
+Match the server's initial-release contracts for timestamp input, beacon delivery, bot flags,
+identity vocabulary and governed traits. Server coordination is
+`mori://shinzui/kansoku/masterplans/5-act-on-rev-1-close-silent-loss-paths-add-metric-filters-and-enrich-web-analytics`.
+Delivery remains best effort; a queued beacon is not server acceptance.
 
 ## Progress
 
-- [ ] M1: Every delivered event carries `sentAt` stamped at transport time, restamped on retry, and the live clock-skew test passes against a server with EP-29 while still skipping cleanly against one without it.
-- [ ] M2: With `exitTransport: "beacon"`, the exit flush and a new `page_leave` event go through `POST /v1/beacon` as a `text/plain` envelope with no preflight, falling back to keepalive fetch when beacon is unavailable or refuses the payload.
-- [ ] M3: `context.bot` is set from a bundled, versioned user-agent list, with `botDetection` modes `flag`, `drop` and `off`, inside the package size budget.
-- [ ] M4: `identifyOnce(userId, traits)` emits `identify_once` from `kansoku-js` and `kansoku-react`, with the schema version pinned once the catalog declares it.
-- [ ] M5: Contracts re-vendored at a server commit containing EP-29, EP-39 and EP-40, generated types regenerated, and the live suite exercising all four behaviours end to end.
 
+- [ ] M1: Transport-time sentAt uses the event clock and immutable event IDs across retries.
+- [ ] M2: Lifecycle-safe beacon/keepalive exit delivery and governed page_leave pass browsers.
+- [ ] M3: Bot flags and email_hmac vocabulary agree with server/generated types.
+- [ ] M4: identify v2 and identify_once v1 helpers validate and update identity consistently.
+- [ ] M5: Final contract pin and required live/browser conformance pass without feature skips.
 
 ## Surprises & Discoveries
 
-(None yet.)
 
+Server schemaVersion defaults to v1; a v2 schema does not upgrade existing helper payloads.
+The initial proposal removed mirrored events after sendBeacon returned true and treated a
+60 KiB allowance as independent for each call. Neither proves receipt or respects the shared
+keepalive quota. The injectable `now` clock must stamp sentAt as well as occurredAt.
 
 ## Decision Log
 
-- Decision: Stamp `sentAt` at transport time, on the serialized copy, not on the queued event.
-  Rationale: The SDK validates events against the vendored schema before queueing, and
-  `sentAt` must reflect the actual send moment, including retries, so the server's formula
-  `receivedAt - (sentAt - occurredAt)` sees the real transit delay.
-  Date: 2026-10-15
-- Decision: `exitTransport` defaults to `"keepalive"` in the release that introduces it, and
-  flips to `"beacon"` in the first release after the server's beacon route is published.
-  Rationale: A beacon to a route that does not exist is a silent loss; the default must follow
-  the server.
-  Date: 2026-10-15
-- Decision: Bot detection flags by default and never drops silently unless configured.
-  Rationale: The server's enrichment plan excludes flagged rows from web metrics while keeping
-  them countable; a dropped event cannot be audited.
-  Date: 2026-10-15
-- Decision: `identifyOnce` is a separate event name, not a reserved key inside `identify`.
-  Rationale: Mirrors the server's decision in EP-40; the catalog governs both events.
-  Date: 2026-10-15
 
+On 2026-10-15 coordinate the first SDK release with the implemented server rather than silently
+shipping unsupported capabilities. Keep exitTransport=keepalive by default; beacon is an explicit
+option until the supported server contract is published. Preserve event IDs/content on retry,
+restamp only sentAt, and keep queued-beacon accounting separate from acknowledged delivery.
+Page-leave is lifecycle telemetry, not user engagement. Set-once initializes; later set may replace.
 
 ## Outcomes & Retrospective
 
-(To be filled during and after implementation.)
 
+Planning reviewed; no SDK code changed by this update.
 
 ## Context and Orientation
 
-`kansoku-js` builds events in `buildEvent` (`packages/kansoku-js/src/envelope.ts`), which sets
-`occurredAt` from the configured clock and copies it into `receivedAt` (the server overwrites
-`receivedAt`). Delivery is `sendBatch` in `packages/kansoku-js/src/transport.ts`, a `fetch` of
-`POST /v1/batch` with the write key in `X-Api-Key`, taking a `keepalive` flag; the client's
-`deliver` (`packages/kansoku-js/src/client.ts` around line 201) splits on 413 and retries with
-backoff, and `exitFlush` (around line 255) sends up to 60 KiB with keepalive when
-`attachExitFlush` in `packages/kansoku-js/src/lifecycle.ts` fires on `visibilitychange`,
-`pagehide` and `pageshow`. Unsent events stay mirrored in per-tab sessionStorage. Context is
-assembled in `packages/kansoku-js/src/context.ts` (locale, timezone, screen, viewport, user
-agent, SDK version). Identity helpers live in `packages/kansoku-js/src/identity-api.ts`; the
-React bindings expose them through `useKansoku()` and hooks under
-`packages/kansoku-react/src/hooks/`. Events are validated against generated types in
-`packages/kansoku-js/src/contract/` and `packages/kansoku-js/src/generated/schema.ts`, which
-derive from the vendored server contracts under `contracts/` pinned by
-`contracts/KANSOKU_COMMIT`; refresh with `just sync-contracts --from <checkout> --ref <commit>`
-then `just generate-schema`, and `just check-contracts` detects drift
-([ADR 1](../adr/0001-vendor-kansoku-contracts-at-a-pinned-commit.md)). Delivery and exit
-semantics are recorded in [ADR 2](../adr/0002-delivery-semantics-and-exit-transport.md),
-capture defaults in [ADR 4](../adr/0004-browser-capture-defaults.md). `just check` enforces
-the size budget; `just test-smoke` runs Playwright under `test/smoke/`; `just test-live` runs
-the opt-in server conformance under `test/live/`, which already includes
-`clock-skew.test.ts`.
 
-Server-side counterparts, cited by their canonical handles: `sentAt` acceptance and skew
-correction in `mori://shinzui/kansoku/plans/29-correct-client-timestamp-skew-and-count-ingest-rejections`;
-the beacon route in `mori://shinzui/kansoku/plans/39-beacon-ingest-route-for-page-exit-delivery`
-(a `text/plain` or JSON body `{"writeKey": …, "batch": […]}`, write keys only, same 202 shape,
-response not readable by the browser); the `context.bot` flag read by
-`mori://shinzui/kansoku/plans/33-acquisition-and-device-enrichment-with-bot-flagging`; and the
-`identify_once` event declared by
-`mori://shinzui/kansoku/plans/40-person-properties-set-and-set-once-user-traits`. The server
-ignores unknown JSON fields and accepts undeclared event names, which is why each milestone
-can ship before its counterpart without errors.
-
+`packages/kansoku-js/src/client.ts` owns deliver/exitFlush and `config.now`; `transport.ts`
+serializes requests; `envelope.ts` stamps events; `lifecycle.ts` owns exit listeners.
+`identity-api.ts`, `identity.ts`, `session.ts` own helper and persistence behavior.
+`contract/validate.ts` checks generated wire contracts; `contracts/KANSOKU_COMMIT` pins them.
+React hooks live under `packages/kansoku-react/src/hooks/`. Read local ADRs
+[1](../adr/0001-vendor-kansoku-contracts-at-a-pinned-commit.md),
+[2](../adr/0002-delivery-semantics-and-exit-transport.md),
+[4](../adr/0004-browser-capture-defaults.md) and proposed
+[8](../adr/0008-initial-release-server-coordination.md).
 
 ## Plan of Work
 
-### M1: `sentAt`
 
-In `sendBatch`, serialize each event with an added `sentAt` set to the current ISO time at
-the moment of the request, leaving queued events untouched so validation and the mirror are
-unaffected; a retry produces a new `sentAt`. Add a unit test with a controlled clock. Update
-`test/live/clock-skew.test.ts` to detect `sentAt` in the served `/openapi.json`'s
-`AnalyticsEvent` schema: when present, expect an event with `occurredAt` 90 seconds ahead to
-be accepted; when absent, keep the current expectation. Document the field in
-`docs/guides/delivery-and-privacy.md`.
+### M1: Timestamp and retry identity
 
-### M2: Beacon exit flush and `page_leave`
 
-Add `exitTransport: "keepalive" | "beacon"` to the options. Under `"beacon"`, `exitFlush`
-builds the envelope `{ writeKey, batch }` as a `Blob` of type `text/plain`, splits to stay under
-60 KiB per call, and calls `navigator.sendBeacon(baseUrl + "/v1/beacon", blob)`; a `true`
-return counts the events as delivered best-effort and removes them from the mirror, a `false`
-return or missing `sendBeacon` falls back to the existing keepalive path. Add
-`autocapture.pageLeave` (default true) emitting `page_leave` on `pagehide` with
-`durationMs` since the current page view and the page's `url` and `path`, queued ahead of the
-exit flush. Record beacon sends in `stats`. Extend the Playwright smoke test to assert the
-request appears with no preflight and that `page_leave` arrives when the tab closes.
-Update ADR 2.
+Serialize sentAt using config.now immediately before each normal, split, retry or beacon request.
+Leave queued occurredAt/eventId/producer content unchanged; restamp the serialization copy only.
+The server correction is future-only: future occurredAt with sentAt >= occurredAt becomes
+receivedAt-(sentAt-occurredAt); past timestamps are preserved. Test with the same injected skewed
+clock for creation and transmission, not real Date.now mixed with fake event time.
+Server ownership is
+`mori://shinzui/kansoku/plans/29-correct-client-timestamp-skew-and-count-ingest-rejections` and
+retry identity is
+`mori://shinzui/kansoku/plans/30-pipeline-backpressure-and-storage-outage-resilience`.
+A lost acknowledgement followed by retry must produce one logical event and stable metric totals.
 
-### M3: Bot flag
+### M2: Exit lifecycle
 
-Add `packages/kansoku-js/src/bot.ts` with a versioned regular-expression list seeded from the
-user agents posthog-js blocks by default plus generic tokens (`bot`, `crawler`, `spider`,
-`headless`, `lighthouse`), and a `botDetection` option: `"flag"` (default) sets
-`context.bot = true`; `"drop"` suppresses capture through the opt-out path with a `bot` drop
-reason; `"off"` does nothing. Keep the list under a stated byte budget and update the size
-check. Unit-test with twenty known bot and twenty browser strings. Update ADR 4.
 
-### M4: `identifyOnce`
+Add exitTransport=keepalive|beacon. Beacon uses text/plain UTF-8 JSON `{writeKey,batch}` at
+/v1/beacon. Count complete envelope UTF-8 bytes, including credential and sentAt; budget at most
+60 KiB of outstanding exit data per document, including keepalive. Do not send multiple maximum
+batches under the assumption that the browser grants an independent quota. A false return or
+missing API falls back to keepalive if budget allows; true means queued_best_effort, not accepted.
+Keep mirrored events until actual acknowledgement or an explicit bounded expiry policy, using
+server deduplication for a later retry; expose queued/expired separately from accepted statistics.
+A true beacon return cannot trigger HTTP-error fallback because responses are unavailable.
 
-Add `identifyOnce(userId, traits)` beside `identify` in `identity-api.ts`, emitting
-`identify_once` with the same user-id validation and the schema version from
-`schemaVersions` when configured; expose it on the React client and add `useIdentifyOnce`
-mirroring `useIdentify`. Document in `docs/guides/react.md` and the getting-started guide.
+Add autocapture.pageLeave as a Boolean option, default true, governed by the same privacy gates.
+Coordinate visibilitychange and pagehide to avoid duplicate exit attempts. Emit at most one
+page_leave per page-view lifecycle, with event-time/session snapshot from that page (do not start
+a new session just to report an old page leaving), durationMs from a monotonic elapsed timer,
+and the same original event ID on replay. Handle SPA transitions and BFCache restoration with
+explicit tests, resetting page timing only on a genuine new view/resume interval. Opt-out/GPC
+suppression and beforeSend apply. Page-leave cannot guarantee complete active-time measurement.
+Server schema page_leave v1 and session semantics are owned by
+`mori://shinzui/kansoku/plans/29-correct-client-timestamp-skew-and-count-ingest-rejections` and
+`mori://shinzui/kansoku/plans/34-session-analytics-duration-bounce-entry-and-exit-pages`;
+transport is `mori://shinzui/kansoku/plans/39-beacon-ingest-route-for-page-exit-delivery`.
 
-### M5: Contract refresh and conformance
+### M3: Bot and identifiers
 
-Once the server repository contains EP-29, EP-39 and EP-40, run `just sync-contracts --from
-<server checkout> --ref <commit>` and `just generate-schema`, commit the pin, types and
-contracts together, pin `identify_once` to version 1 in the examples, and extend the live
-suite: skew acceptance, a beacon envelope accepted at `/v1/beacon`, and an `identify_once`
-followed by a metrics query with `filter=user:signup_source:eq:newsletter` returning the
-expected point. Each live test skips with a clear message when the served OpenAPI lacks the
-feature.
 
+Add a versioned licensed/synthetic bot matcher and botDetection=flag|drop|off (default flag).
+Flag mode adds Boolean context.bot without overriding an existing true; drop mode uses explicit
+loss accounting and privacy suppression; off adds nothing. Measure package size. Server still
+performs its own classification. Add email_hmac to generated/exported identifier types and
+validator fixtures from the refreshed contract; never compute or distribute a server pepper in
+browser code. Server kind ownership is
+`mori://shinzui/kansoku/plans/32-time-aware-identity-bindings-and-bounded-resolution-cost`.
+
+### M4: Governed identity helpers
+
+
+identify defaults explicitly to schemaVersion=2; identifyOnce(userId,traits) defaults to v1 and
+updates active userId exactly like identify. Both require a valid user ID, use the same queue,
+and apply the declared trait types. Explicit version overrides remain visible; identify v1 is
+identity-only and does not mutate governed current traits. Omitted traits leave existing values;
+null is not a deletion operation. Set-once initializes a field, later set can replace it.
+Do not allow custom alias properties to overwrite previousId/newId. Include the server's
+identify_once implicit-cookie binding in live tests. React useIdentifyOnce follows the actual
+useIdentify lifecycle and avoids duplicate capture on StrictMode restarts; "once" describes
+server trait semantics, not a promise that React mounts once. Server ownership is
+`mori://shinzui/kansoku/plans/40-person-properties-set-and-set-once-user-traits`.
+
+### M5: Required contract release gate
+
+
+After server EP-29/30/31/32/33/34/39/40 land, sync contracts at their containing commit, regenerate
+schema and update runtime validators/fixtures/examples together. Include bot behavior and
+email_hmac, not only the three original features. Local optional tests may feature-detect older
+servers, but required release mode fails missing credentials, unsupported routes or zero/pending
+cases. Server EP-38 owns the joint gate. Use a JSON filter:
+`filter={"dimension":"user:signup_source","op":"eq","value":"newsletter"}`,
+URL-encoded by the test client; the former colon grammar is withdrawn before initial release.
 
 ## Concrete Steps
 
+
+From this repository inside nix develop, use the server's owned acceptance environment for live
+data; do not mutate an ambient deployment. Add required-mode support before claiming the last
+command is release evidence.
+
 ```bash
-nix develop
 just install
-just check
 just test
 just test-smoke
-KANSOKU_LIVE_BASE_URL=http://localhost:8080 KANSOKU_LIVE_WRITE_KEY=... KANSOKU_LIVE_SERVICE_TOKEN=... just test-live
-just sync-contracts --from ../kansoku --ref <commit> && just generate-schema && just check-contracts
+just sync-contracts --from ../kansoku --ref <verified-server-commit>
+just generate-schema
+just check
+KANSOKU_REQUIRE_LIVE=1 just test-live
 ```
 
+The harness supplies KANSOKU_LIVE_BASE_URL, write key and service token privately. Contract checks
+currently compare HEAD; preserve regenerated changes and review/commit the pin with generated
+artifacts before requiring that committed drift check to pass.
 
 ## Validation and Acceptance
 
-1. M1: a batch sent at T carries `sentAt` within one second of T on every event and a different
-   value on retry; the live skew test passes or skips by feature detection.
-2. M2: in Chromium, closing the tab after a `cta_clicked` produces a `text/plain` POST to
-   `/v1/beacon` with no OPTIONS, containing `cta_clicked` and `page_leave` with a positive
-   `durationMs`; with `exitTransport: "keepalive"` behaviour is unchanged.
-3. M3: `Googlebot` sets `context.bot`; `"drop"` reports a `bot` drop and sends nothing; a
-   normal browser string is unflagged; `just check` size budget passes.
-4. M4: `identifyOnce("u-1", { signup_source: "newsletter" })` queues `identify_once` with the
-   traits and the configured version; the React hook calls it once per mount.
-5. M5: `just check-contracts` is clean after the refresh and the three live tests pass against
-   a server at or after the pinned commit.
 
+Test sentAt on retry, splitting and beacon with controlled skew; identical retries leave server
+counts unchanged. Browser tests cover allowed/disallowed origins, no OPTIONS for text/plain,
+quota refusal, competing lifecycle events, BFCache, SPA navigation, oversized envelope and page
+session snapshots. Assert no accepted increment on beacon true. Bot fixture, size and SSR checks
+pass. Both trait helpers emit explicit versions, email_hmac validates, and post-identifyOnce
+anonymous history gains the expected current trait. Required live checks exercise rate limiting,
+partial rejection, null groups and JSON filters against the final server without skips.
 
 ## Idempotence and Recovery
 
-All options default to current behaviour except `sentAt`, which is additive and ignored by
-older servers. The beacon default flip is a documented release note. Re-vendoring contracts
-is repeatable and reviewed as one commit.
 
+Refresh contracts reproducibly. Optional legacy-server development is not compatibility acceptance.
+Queued delivery may still be lost at tab closure; local retention and retries remain bounded.
+Do not silently fall back from an invalid filter to a broader population.
 
 ## Interfaces and Dependencies
 
-Soft dependencies on the four server plans named above; nothing here fails without them.
-Claims the `exitTransport`, `botDetection` and `autocapture.pageLeave` options, the
-`page_leave` event name, the `identifyOnce` helper and `useIdentifyOnce` hook, and the `bot`
-drop reason. Related local plan:
-`docs/plans/7-cross-origin-identity-parent-domain-cookies-and-link-handoff.md`, which shares
-the exit and identity code paths; land M2 here before or after that plan's handoff but rebase
-`client.ts` carefully.
+
+Server milestones are hard prerequisites for corresponding live acceptance, not for pure unit
+work. Whole-plan completion waits for all server counterparts named above. Local EP-7 is
+`docs/plans/7-cross-origin-identity-parent-domain-cookies-and-link-handoff.md`; both share lifecycle
+and identity code and require integration of reset/handoff behavior. Runtime ADR updates happen
+with implementation; ADR-8 records the proposed coordination now.
+
+Revision note (2026-10-15): reconcile timestamp clock, quota/acknowledgement semantics, schema
+versions, email_hmac, JSON filters and mandatory conformance with the reviewed server MP-5.

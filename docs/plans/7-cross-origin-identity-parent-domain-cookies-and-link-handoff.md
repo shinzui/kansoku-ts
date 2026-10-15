@@ -10,9 +10,22 @@ provenance:
     model: "claude-fable-5-1"
     harness: "claude-code"
     at: 2026-10-15T14:55:23Z
+  reviews:
+    - model: "gpt-6-astra"
+      harness: "codex-cli"
+      at: 2026-10-15T15:43:16Z
+      verdict: "changes-requested"
+      note: "Original draft review found correctness gaps; findings corrected by the accompanying update, with native acceptance still required."
+  revisions:
+    - model: "gpt-6-astra"
+      harness: "codex-cli"
+      at: 2026-10-15T15:43:16Z
+      mode: "update"
+      note: "Reconcile first-release APIs, domain semantics, dependencies and acceptance with the source-validated MP-5 review."
 ---
 
 # Cross-origin identity: parent-domain cookies and link handoff
+
 
 This ExecPlan is a living document. Update its living sections and durable ADRs as work
 proceeds. It answers the second of two gaps identified on 2026-10-15 while planning
@@ -22,6 +35,7 @@ ids, so a marketing visit does not stitch to the signup that follows it.
 
 
 ## Purpose / Big Picture
+
 
 A visitor who reads `www.example.com/pricing`, clicks "Start free trial", signs up on
 `app.example.com` and is identified there will be one person in Kansoku, with the pricing
@@ -36,17 +50,24 @@ evidence links both ids when the user identifies.
 
 ## Progress
 
-- [ ] M1: The "one account, several properties" guide documents `storage: "cookie"` with `cookieDomain`, and a Chromium smoke test across two subdomains shows one anonymous id and one session on both.
+
+- [ ] M1: The "one account, several properties" guide documents `storage: "cookie"` with `cookieDomain`, and a Chromium smoke test across two subdomains shows one anonymous id and one producer session ID on both (server sessions remain source-scoped).
 - [ ] M2: `linkTo(url)` and the start-up handoff adopt or record an incoming anonymous id with the parameter stripped from the address bar, covered by unit tests and the smoke test.
 - [ ] M3: A live conformance test proves that a marketing-origin page view followed by an app-origin identify resolves to one canonical user through the server's funnel endpoint.
 
 
 ## Surprises & Discoveries
 
-(None yet.)
+
+Review found identity snapshots cached in memory while session.current rereads shared storage.
+Parent-domain cookies alone do not propagate logout/reset to already-open tabs. A shared producer
+session ID also does not imply one server session across sourceService: server sessions are
+scoped by account/source_service/session_id. The handoff identifier is visible in the initial
+URL request before JavaScript can strip it.
 
 
 ## Decision Log
+
 
 - Decision: Parent-domain cookies are the recommended mechanism for subdomains; the URL
   handoff is for cross-site links and cookie-free deployments.
@@ -54,8 +75,9 @@ evidence links both ids when the user identifies.
   visible in history and referrers and should be the exception.
   Date: 2026-10-15
 - Decision: On arrival with an incoming id, adopt it as the anonymous id when the receiving
-  origin has no persisted identity; otherwise keep the local anonymous id and store the incoming
-  value as the `cookie` entry of `identifiers`.
+  origin has no persisted identity; otherwise keep the local anonymous id and record the incoming cookie only while logged out,
+  preserving other identifiers. Never attach an unsolicited incoming cookie to an already
+  authenticated user, and do not overwrite an existing different cookie signal.
   Rationale: Two anonymous ids cannot be aliased without a user, but the server binds every
   entry of `identifiers` to the user on identify (`mori://shinzui/kansoku/okf/adrs/concepts/ADR-5`),
   so recording the marketing-site id as a second cookie signal links both histories the moment
@@ -63,7 +85,7 @@ evidence links both ids when the user identifies.
   Date: 2026-10-15
 - Decision: The parameter name is `kansoku_aid`, values are validated with the same rules as
   identifier values (1 to 256 printable non-space ASCII characters), and the parameter is
-  removed from the address bar after reading unless `crossOriginLink.stripParam` is false.
+  always removed from the address bar after reading; no stripParam=false escape hatch.
   Rationale: Validation keeps a crafted link from injecting arbitrary strings into identity
   evidence; stripping keeps the id out of bookmarks and copied links.
   Date: 2026-10-15
@@ -71,10 +93,12 @@ evidence links both ids when the user identifies.
 
 ## Outcomes & Retrospective
 
+
 (To be filled during and after implementation.)
 
 
 ## Context and Orientation
+
 
 `kansoku-js` (`packages/kansoku-js`) persists identity through a storage adapter chosen in
 `createKansoku` options: `storage` is `"localStorage"` (default), `"cookie"`, `"memory"` or
@@ -112,7 +136,9 @@ touching the hosts file.
 
 ## Plan of Work
 
+
 ### M1: Document and prove the parent-domain cookie setup
+
 
 Add `docs/guides/cross-origin-identity.md` (and link it from `docs/README.md` and
 `getting-started.md`): why one Kansoku account should hold both properties, the
@@ -121,37 +147,58 @@ on every property, what travels in the cookie (anonymous id, user id, organisati
 identifiers, session, opt-out) and what does not (the per-tab queue), the cookie attributes
 and lifetime, the consent note (a first-party identifier cookie; `respectGlobalPrivacyControl`
 and `respectDoNotTrack` apply unchanged), and the server-side pairing with
-`filter=source_service:eq:…` and `groupBy=host` once
+`filter={"dimension":"source_service","op":"eq","value":"marketing-site"}` and `groupBy=host` once
 `mori://shinzui/kansoku/plans/31-metric-property-filters-and-dual-grouping` lands. Review
 `cookieStorage` for the case where `cookieDomain` is set but the current host is not under it
-(the browser silently drops the cookie): detect it and fall back to localStorage with a
-`debug` warning. Add a smoke test that launches Chromium with host-resolver rules, loads the
+(the browser silently drops the cookie): detect it and use the documented memory fallback with a debug warning, without logging identifiers. Add a smoke test that launches Chromium with host-resolver rules, loads the
 vanilla example on `www.example.test`, then on `app.example.test`, and asserts both pages
 report the same anonymous id and session id through the example's stats panel.
 
+Before accepting M1, synchronize shared identity changes before event capture (or through a
+verified shared invalidation mechanism). Test two already-open subdomains/tabs: logout/reset on
+one must prevent the other from continuing to emit the previous user/identifiers. Do not promise
+cross-property session unification: identity stitches across sourceService, session metrics do not.
+A privacy-constrained storage mode must not silently fall back to more persistent storage;
+failed cookie persistence uses the documented memory fallback unless the caller opts into another.
+
 ### M2: Link handoff
 
+
 Add `linkTo(url: string | URL): string` to the client, appending `kansoku_aid=<anonymousId>`
-to the given URL, and a `crossOriginLink` option `{ accept?: boolean; stripParam?: boolean }`
-(both default true). During `createKansoku` start-up, before attribution reads the URL, read
+to the given URL, and a `crossOriginLink` option `{ accept?: boolean; allowedOrigins: string[] }`
+(accept defaults false; allowedOrigins must be explicit). During `start()`, after privacy suppression checks and before attribution reads the URL, read
 `kansoku_aid`; if `accept` is true and the value validates, apply the Decision Log rule
-through `createIdentity` (a new `adoptAnonymousId` for the fresh case, `setIdentifiers` with
-`cookie` for the other) and, if `stripParam` is true, rewrite the address with the original
+through `createIdentity` (record whether identity existed before constructor initialization;
+a new `adoptAnonymousId` handles the fresh case, `setIdentifiers` with
+`cookie` for the other) and always rewrite the address with the original
 `history.replaceState` so no page view is emitted. Export `linkTo` from `kansoku-react`'s
 `useKansoku()` as well. Extend the smoke test with a cross-site hop between
 `www.example.test` and `app.another.test` without cookies, asserting adoption on a fresh
 profile and the `identifiers.cookie` path on a profile that already has an id.
 
+Only decorate explicitly allowlisted HTTP(S) destination origins, and refuse link decoration
+while suppressed or before start. Never send identifiers to arbitrary outbound destinations.
+Strip inbound handoff parameters even when ignored, before attribution. Import only after the
+caller opts in and privacy gates permit it; merge mapped identifiers instead of replacing them.
+Raw URL handoff is analytics-only and replayable, not authenticated identity. Explain initial
+request/referrer exposure, use a restrictive Referrer-Policy in examples, and test forwarded/stale
+links, conflicting cookies and already-authenticated recipients. Do not claim stripping protects
+server access logs that already received the URL.
+
 ### M3: Live conformance
+
 
 Under `test/live/`, add a test that posts a `page_view` under anonymous id A from
 `sourceService: "marketing-site"`, then an `identify` with `userId: U` and
 `identifiers: { cookie: A }` from `sourceService: "app"` under anonymous id B, then queries
 `GET /metrics/funnel?steps=page_view,identify` for the window and asserts one user completed
-both steps. Skip when `KANSOKU_LIVE_SERVICE_TOKEN` is unset, as the other live tests do.
+both steps. Optional local runs may skip missing credentials; required release mode must fail instead.
+Also test ambiguous shared cookies against the revised server resolution policy; a conflicted
+link is not proof that two histories belong to one person.
 
 
 ## Concrete Steps
+
 
 ```bash
 nix develop
@@ -169,9 +216,9 @@ steps with one user.
 
 ## Validation and Acceptance
 
+
 1. M1: with `cookieDomain: ".example.test"`, two subdomains show one anonymous id and one
-   session; with a mismatched `cookieDomain`, the SDK falls back to localStorage and logs a
-   debug warning; the guide exists and is linked.
+   session; with a mismatched `cookieDomain`, the SDK uses its documented memory fallback and logs a redacted debug warning; the guide exists and is linked.
 2. M2: `linkTo("https://app.example.test/signup")` returns the URL with `kansoku_aid`; a fresh
    profile adopts the id; a seeded profile keeps its id and records `identifiers.cookie`;
    an invalid value is ignored; the parameter is gone from `location.search` before the first
@@ -182,17 +229,27 @@ steps with one user.
 
 ## Idempotence and Recovery
 
-Documentation and additive options; defaults preserve current behaviour (`accept` applies
-only when the parameter is present). Removing `crossOriginLink` support leaves cookies as the
-mechanism. No server change is required.
+
+Documentation and additive options; defaults preserve current behaviour (handoff acceptance is opt-in). Removing `crossOriginLink` support leaves cookies as the
+mechanism. Final live acceptance requires the server identity contract at
+`mori://shinzui/kansoku/plans/32-time-aware-identity-bindings-and-bounded-resolution-cost`.
 
 
 ## Interfaces and Dependencies
 
-No local hard dependencies. Soft dependency on the server's
+
+No local hard dependencies. Final live acceptance hard-depends on the server's
+`mori://shinzui/kansoku/plans/32-time-aware-identity-bindings-and-bounded-resolution-cost`.
+Soft dependency on the server's
 `mori://shinzui/kansoku/plans/31-metric-property-filters-and-dual-grouping` for the
 `source_service` and `host` query dimensions referenced in the guide. Claims the `kansoku_aid`
 parameter name, the `crossOriginLink` option and the `linkTo` export. Update
 [ADR 3](../adr/0003-identity-and-session-persistence.md) with the cross-origin rules
 (parent-domain cookie recommendation, handoff adoption rule, parameter validation) following
 `agents/skills/exec-plan/ADR.md` and run `just adr-check`.
+
+
+Revision note (2026-10-15): align JSON filters and session scoping with the initial server
+contract, require live identity acceptance, and add opt-in handoff, destination allowlisting,
+shared-tab reset synchronization and honest URL exposure semantics. Proposed coordination is
+recorded in [ADR-8](../adr/0008-initial-release-server-coordination.md).

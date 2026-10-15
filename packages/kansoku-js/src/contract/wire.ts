@@ -1,4 +1,9 @@
 import type { components } from "../generated/schema.js"
+
+export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[]
+export interface JsonObject {
+  [key: string]: JsonValue
+}
 export type { paths } from "../generated/schema.js"
 export type AnalyticsEvent = components["schemas"]["AnalyticsEvent"]
 export type BatchAck = components["schemas"]["BatchAck"]

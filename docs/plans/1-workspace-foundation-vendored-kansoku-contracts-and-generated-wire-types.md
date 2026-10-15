@@ -69,7 +69,7 @@ sends an analytics event; it builds the floor every other plan in
   skipped; the sample DOM test, the fetch-mock self-test, and the no-DOM sanity test pass;
   `test/helpers/fetch-mock.ts` exposes `createFetchMock()` returning `{ fetch, requests,
   respondWith }` as described in Interfaces and Dependencies.
-- [ ] Milestone 4 — Continuous integration and ADR bundle. `.github/workflows/ci.yml` runs
+- [x] (2026-10-14; local CI and strict ADR validation pass; remote verification deferred by user) Milestone 4 — Continuous integration and ADR bundle. `.github/workflows/ci.yml` runs
   `just ci` inside the Nix shell; `docs/adr/` is a profile-governed bundle whose strict
   validation passes with ADR-1 (contract vendoring policy) present; `mori validate` accepts
   the bundle declared in `mori.dhall`.
@@ -77,7 +77,7 @@ sends an analytics event; it builds the floor every other plan in
 
 ## Surprises & Discoveries
 
-The scaffold already contained formatter differences in managed skill/tooling files and plan prose. The formatter excludes managed agents, plan documents (which require intentional spacing), and byte-for-byte vendored contracts; it still checks all handwritten implementation and ADR files. Bun add initially rewrote existing React peer declarations; the agreed peer ranges were restored explicitly.
+The scaffold already contained formatter differences in managed skill/tooling files and plan prose. The formatter excludes managed agents, plan documents (which require intentional spacing), and byte-for-byte vendored contracts; it still checks all handwritten implementation and ADR files. Bun add initially rewrote existing React peer declarations; the agreed peer ranges were restored explicitly. The scaffold also omitted OKF from CI: the workflow installs the profile-compatible v0.9.0.0 validator at its exact upstream release commit using the producer cache. Current upstream is v0.10.0.0; no newer behavior is needed for the v0.19.0 ADR profile. The initial push omitted bunfig.toml; a follow-up commit adds it. Local `just ci`, both publint runs, Node import/require, the negative DOM test, and the contract-drift negative test pass. The user explicitly directed functional package work to proceed without waiting for remote CI.
 
 
 ## Decision Log
@@ -156,7 +156,7 @@ The scaffold already contained formatter differences in managed skill/tooling fi
 
 ## Outcomes & Retrospective
 
-(To be filled during and after implementation.)
+The workspace, pinned contracts, generated wire types, test harness and ADR bundle are implemented. Local CI passes, as do Node import/require, publint, and negative drift/DOM probes. Remote CI verification is deferred at the user’s direction so package behavior can be implemented first.
 
 
 ## Context and Orientation
@@ -895,3 +895,5 @@ export maps.
 Prerequisites: none. This is the first child plan of
 `docs/masterplans/1-kansoku-browser-sdks-kansoku-js-and-kansoku-react.md`; every other child
 hard-depends on it being Complete.
+
+Revision note (2026-10-14): the user deferred remote CI acceptance and prioritised implementation of functional packages. Remote run success is follow-up verification, not a prerequisite for EP-2.

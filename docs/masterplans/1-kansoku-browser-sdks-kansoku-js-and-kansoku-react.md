@@ -215,9 +215,9 @@ OpenAPI document and catalog; later refreshes are an explicit, reviewed step.
 
 | # | Title | Path | Hard Deps | Soft Deps | Status |
 |---|-------|------|-----------|-----------|--------|
-| 1 | Workspace foundation, vendored Kansoku contracts, and generated wire types | docs/plans/1-workspace-foundation-vendored-kansoku-contracts-and-generated-wire-types.md | None | None | In Progress |
-| 2 | kansoku-js core: event envelope, identity and session state, batched delivery, and exit flush | docs/plans/2-kansoku-js-core-event-envelope-identity-and-session-state-batched-delivery-and-exit-flush.md | EP-1 | None | Not Started |
-| 3 | kansoku-js browser capture: page views, navigation, attribution, identity helpers, and experiments | docs/plans/3-kansoku-js-browser-capture-page-views-navigation-attribution-identity-helpers-and-experiments.md | EP-2 | None | Not Started |
+| 1 | Workspace foundation, vendored Kansoku contracts, and generated wire types | docs/plans/1-workspace-foundation-vendored-kansoku-contracts-and-generated-wire-types.md | None | None | Complete |
+| 2 | kansoku-js core: event envelope, identity and session state, batched delivery, and exit flush | docs/plans/2-kansoku-js-core-event-envelope-identity-and-session-state-batched-delivery-and-exit-flush.md | EP-1 | None | Complete |
+| 3 | kansoku-js browser capture: page views, navigation, attribution, identity helpers, and experiments | docs/plans/3-kansoku-js-browser-capture-page-views-navigation-attribution-identity-helpers-and-experiments.md | EP-2 | None | In Progress |
 | 4 | kansoku-react: provider, hooks, and router-agnostic page tracking | docs/plans/4-kansoku-react-provider-hooks-and-router-agnostic-page-tracking.md | EP-3 | None | Not Started |
 | 5 | Examples, live contract conformance, and real-browser smoke test | docs/plans/5-examples-live-contract-conformance-and-real-browser-smoke-test.md | EP-3 (M1, M3, M4); EP-4 for M2 (React example) | EP-6 | Not Started |
 | 6 | Release engineering: package checks, size budget, docs, and trusted publishing | docs/plans/6-release-engineering-package-checks-size-budget-docs-and-trusted-publishing.md | EP-1; final milestone (first publish) requires EP-5 Complete | EP-2, EP-3, EP-4 | Not Started |
@@ -632,13 +632,7 @@ by navigating away and asserting the server-side mock received the final batch.
 
 ## Progress
 
-Planning complete on 2026-10-14. Mori project `shinzui/kansoku-ts` is registered with both
-packages declared; rei intention `intention_01m4ymqn7xe1a8tz8v7r78e34y` is attached to this
-MasterPlan and every child. No child plan has started; EP-1 is the only eligible plan. A
-best-practices review on 2026-10-14 (reference analytics SDKs and current React library
-conventions) revised the client lifecycle, privacy signals, queue persistence, and React
-provider design across the MasterPlan and all six children before implementation began; the
-revision note at the end of the Decision Log summarises it.
+EP-1 is locally accepted as of 2026-10-14. Workspace, pinned generated contracts, test harness and ADR validation pass. At the user’s direction, remote CI is deferred verification and does not block functional package implementation. EP-2 is Complete: the built kansoku-js core delivers real HTTP batches; 28 core tests and the DOM-free contract checks pass. EP-3 is In Progress to add browser capture and identity/experiment helpers.
 
 Cross-plan gates not represented by a single child plan:
 
@@ -716,6 +710,8 @@ Cross-plan gates not represented by a single child plan:
 
 
 ## Decision Log
+
+- Decision (2026-10-14, user direction): Accept the foundation with its passing local checks and defer remote CI verification. Prioritise working SDK packages over further CI work. This explicitly revises EP-1’s remote-run acceptance gate; existing SDK behavior and test obligations remain.
 
 - Decision: Ship exactly two publishable packages, `kansoku-js` and `kansoku-react`, with no
   separate core package. The runtime-agnostic modules inside `kansoku-js` (envelope, queue,

@@ -17,6 +17,11 @@ provenance:
       at: 2026-10-15T03:17:45Z
       mode: "update"
       note: "Add start/stop/autoStart lifecycle and onStart hook, move queue mirror to sessionStorage, resolve GPC option"
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-10-15T03:52:40Z
+      mode: "implement"
+      note: "Implement functional SDK core after locally accepted foundation; remote CI deferred by user"
 ---
 
 # kansoku-js core: event envelope, identity and session state, batched delivery, and exit flush
@@ -68,25 +73,25 @@ HTTP requests to a tiny in-process mock server.
 
 ## Progress
 
-- [ ] M1 — Envelope, constants, and validation: `buildEvent` produces schema-valid
+- [x] (2026-10-14; accepted by core suite, DOM-free contract tests, build and HTTP smoke) M1 — Envelope, constants, and validation: `buildEvent` produces schema-valid
   `AnalyticsEvent` objects, the event-name and schema-version constants exist, client-side
   validation mirrors the server's structural rules, and a catalog-driven contract test proves
   every built-in event satisfies `contracts/events.json`. Accepted when
   `bun test packages/kansoku-js/test/envelope.test.ts packages/kansoku-js/test/validate.test.ts packages/kansoku-js/test/contract.test.ts`
   passes with no DOM globals loaded.
-- [ ] M2 — Storage, identity, and session: the storage adapters (localStorage and
+- [x] (2026-10-14; accepted by core suite, DOM-free contract tests, build and HTTP smoke) M2 — Storage, identity, and session: the storage adapters (localStorage and
   sessionStorage, each with memory fallback, plus cookie and memory), the identity store, and
   the session manager persist under the documented keys and formats; a session that lapses
   after the timeout produces a new `sessionId` and a `session_start` event. Accepted when
   `bun test packages/kansoku-js/test/storage.test.ts packages/kansoku-js/test/identity.test.ts packages/kansoku-js/test/session.test.ts`
   passes under happy-dom.
-- [ ] M3 — Queue, transport, retry, and accounting: `track` enqueues, `flush` delivers batches
+- [x] (2026-10-14; accepted by core suite, DOM-free contract tests, build and HTTP smoke) M3 — Queue, transport, retry, and accounting: `track` enqueues, `flush` delivers batches
   to `/v1/batch`, and every server outcome (202 with rejections, 400, 401, 413 split, 503
   retryable, network error, retry exhaustion) updates `stats` and calls `onDrop` exactly as the
   delivery contract specifies; `beforeSend` and opt-out gate the pipeline. Accepted when
   `bun test packages/kansoku-js/test/queue.test.ts packages/kansoku-js/test/retry.test.ts packages/kansoku-js/test/transport.test.ts packages/kansoku-js/test/client.test.ts`
   passes.
-- [ ] M4 — Lifecycle, persistence, and the public surface: `start()` attaches and `stop()`
+- [x] (2026-10-14; accepted by core suite, DOM-free contract tests, build and HTTP smoke) M4 — Lifecycle, persistence, and the public surface: `start()` attaches and `stop()`
   detaches the exit-flush listeners and the flush interval (both idempotent; `autoStart: false`
   attaches nothing until `start()`); `pagehide` and hidden `visibilitychange` trigger a chunked
   keepalive exit flush while started; a queue mirrored to `sessionStorage` is restored by the
@@ -98,7 +103,7 @@ HTTP requests to a tiny in-process mock server.
 
 ## Surprises & Discoveries
 
-(None yet.)
+Removing a 413 batch before its halves finish would leave a persistence gap. Split halves stay in the queue mirror until terminal responses. Exit requests leave unanswered events mirrored rather than running delayed retries after teardown. Overlapping normal/exit acknowledgements account for each event ID once. Cookie deletion supplies both Max-Age=0 and an epoch Expires value for consistent browser and happy-dom behavior.
 
 
 ## Decision Log
@@ -187,7 +192,7 @@ HTTP requests to a tiny in-process mock server.
 
 ## Outcomes & Retrospective
 
-(To be filled during and after implementation.)
+Implemented the functional core and its public surface with zero runtime dependencies. All 28 core tests pass, including 7 DOM-free envelope/validation/catalog tests. The built package performs a real HTTP round trip (`accepted: 3`), type checks and formats cleanly, and the delivery and persistence ADRs validate strictly. Browser capture and identity helpers remain in the next child plan.
 
 
 ## Context and Orientation

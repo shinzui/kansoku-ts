@@ -30,6 +30,15 @@ const repeatableFilters: Equal<
   string[] | undefined
 > = true
 
+type AcquisitionQuery = paths["/metrics/acquisition"]["get"]["parameters"]["query"]
+const acquisitionMeasure: Equal<AcquisitionQuery["measure"], "sessions" | "users" | undefined> =
+  true
+const acquisitionBots: Equal<AcquisitionQuery["includeBots"], boolean | undefined> = true
+const pageViewBots: Equal<
+  paths["/metrics/page-views"]["get"]["parameters"]["query"]["includeBots"],
+  boolean | undefined
+> = true
+
 test("wire types match the required event and response shapes", () => {
   expect([requiredKeys, ackType, retryable]).toEqual([true, true, true])
   expect(api.components.schemas.AnalyticsEvent.required).toEqual([
@@ -68,6 +77,19 @@ test("metric contracts preserve missing groups and repeatable filters", () => {
     "string",
     "null",
   ])
+})
+
+test("acquisition and web queries expose explicit bot and population controls", () => {
+  expect([acquisitionMeasure, acquisitionBots, pageViewBots]).toEqual([true, true, true])
+  const query: AcquisitionQuery = {
+    from: "2026-07-01",
+    to: "2026-07-03",
+    groupBy: "channel,browser_family",
+    measure: "users",
+    includeBots: true,
+    filter: ['{"dimension":"country_code","op":"eq","value":"GB"}'],
+  }
+  expect(query.measure).toBe("users")
 })
 
 test("catalog and source pin carry the governed contract", async () => {

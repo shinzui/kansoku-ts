@@ -47,6 +47,22 @@ const sessionMeasure: Equal<
 const sessionFilters: Equal<SessionQuery["filter"], string[] | undefined> = true
 const sessionBots: Equal<SessionQuery["includeBots"], boolean | undefined> = true
 
+type UsersQuery = paths["/metrics/users"]["get"]["parameters"]["query"]
+type RetentionQuery = paths["/metrics/retention"]["get"]["parameters"]["query"]
+const userWindow: Equal<UsersQuery["window"], "calendar" | "rolling7" | "rolling30" | undefined> =
+  true
+const retentionMode: Equal<RetentionQuery["mode"], "on" | "on_or_after" | undefined> = true
+const cohortMode: Equal<RetentionQuery["cohort"], "window" | "lifetime" | undefined> = true
+const historyFilters: Equal<RetentionQuery["filter"], string[] | undefined> = true
+const lifecycleBots: Equal<
+  paths["/metrics/lifecycle"]["get"]["parameters"]["query"]["includeBots"],
+  boolean | undefined
+> = true
+const stickinessGroups: Equal<
+  paths["/metrics/stickiness"]["get"]["parameters"]["query"]["groupBy"],
+  string | undefined
+> = true
+
 test("wire types match the required event and response shapes", () => {
   expect([requiredKeys, ackType, retryable]).toEqual([true, true, true])
   expect(api.components.schemas.AnalyticsEvent.required).toEqual([
@@ -105,6 +121,26 @@ test("acquisition, sessions and web queries expose explicit bot and population c
     filter: ['{"dimension":"country_code","op":"eq","value":"GB"}'],
   }
   expect(query.measure).toBe("users")
+})
+
+test("activity contracts preserve closed window/cohort choices and common population controls", () => {
+  expect([
+    userWindow,
+    retentionMode,
+    cohortMode,
+    historyFilters,
+    lifecycleBots,
+    stickinessGroups,
+  ]).toEqual([true, true, true, true, true, true])
+  const query: RetentionQuery = {
+    from: "2026-07-01",
+    to: "2026-07-10",
+    mode: "on_or_after",
+    cohort: "lifetime",
+    days: "1,7",
+    filter: ['{"dimension":"source","op":"eq","value":"web"}'],
+  }
+  expect(query.mode).toBe("on_or_after")
 })
 
 test("catalog and source pin carry the governed contract", async () => {

@@ -17,6 +17,11 @@ provenance:
       at: 2026-10-15T03:17:45Z
       mode: "update"
       note: "Provider drives start/stop from an effect (no shutdown workaround), ReactElement typing, memoised context, optional @types/react peer"
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-10-15T04:03:32Z
+      mode: "implement"
+      note: "Implement provider, lifecycle-safe hooks and SSR no-op client"
 ---
 
 # kansoku-react: provider, hooks, and router-agnostic page tracking
@@ -69,14 +74,14 @@ simulated browser and asserts the exact events handed to a mocked `fetch`.
 
 ## Progress
 
-- [ ] M1: `KansokuProvider` (constructing with `autoStart: false`, `start()` in its effect,
+- [x] (2026-10-14; browser/SSR tests and directive-preserving build accepted) M1: `KansokuProvider` (constructing with `autoStart: false`, `start()` in its effect,
   `stop()` in the cleanup, memoised context value), the React context, `useKansoku`, and the
   server-side no-op client exist in `packages/kansoku-react`; the package builds with `just build` to the export-map
   layout (`dist/index.js`, `dist/index.js.map`, `dist/index.d.ts`; ESM only) and
   `dist/index.js` begins with the `"use client";` directive.
-- [ ] M2: `useTrack`, `usePageView`, `useIdentify`, and `useExperiment` are implemented with the
+- [x] (2026-10-14; browser/SSR tests and directive-preserving build accepted) M2: `useTrack`, `usePageView`, `useIdentify`, and `useExperiment` are implemented with the
   one-time development warning in `usePageView`, and `bun run typecheck` passes for the package.
-- [ ] M3: `bun test packages/kansoku-react` passes under happy-dom with the fetch mock,
+- [x] (2026-10-14; browser/SSR tests and directive-preserving build accepted) M3: `bun test packages/kansoku-react` passes under happy-dom with the fetch mock,
   including the StrictMode provider-restart and single-exposure tests and a server-rendering test that runs with
   `KANSOKU_TEST_NO_DOM=1`; `packages/kansoku-react/README.md` documents both the plain and the React
   Router usage; the "React binding boundary" ADR is recorded in `docs/adr/`.
@@ -84,7 +89,7 @@ simulated browser and asserts the exact events handed to a mocked `fetch`.
 
 ## Surprises & Discoveries
 
-(None yet.)
+The SSR test lives under test/ssr/ssr.test.tsx so the shared no-DOM recipe actually selects it. Dependency ranges resolve React/React DOM 19.3.0 under the existing release-age gate. The package declaration build has no Node ambient types; its development-warning environment guard uses a local declaration rather than adding Node types to browser exports.
 
 
 ## Decision Log
@@ -148,7 +153,7 @@ simulated browser and asserts the exact events handed to a mocked `fetch`.
 
 ## Outcomes & Retrospective
 
-(To be filled during and after implementation.)
+The provider, context, no-op server client and all five hooks are implemented. Eleven React browser tests and one no-DOM SSR test pass, including StrictMode restart and exposure behavior, external-client ownership and stable context/callbacks. The ESM build starts with the use-client banner and the React boundary ADR validates.
 
 
 ## Context and Orientation

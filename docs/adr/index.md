@@ -12,3 +12,4 @@ okf_version: "0.2"
 - [Delivery semantics and exit transport](0002-delivery-semantics-and-exit-transport.md) - Share one batch delivery engine with bounded retries, loss accounting and a reversible capture lifecycle.
 - [Identity and session persistence](0003-identity-and-session-persistence.md) - Share browser identity through an adapter while keeping the pending delivery queue in per-tab storage.
 - [Browser capture defaults](0004-browser-capture-defaults.md) - Capture page views and session starts through the shared delivery engine with explicit privacy gates and lifecycle ownership.
+- [React binding boundary](0005-react-binding-boundary.md) - Keep React bindings thin and drive owned clients through reversible effects with a no-op server-rendering path.

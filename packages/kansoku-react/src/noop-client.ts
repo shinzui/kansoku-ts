@@ -1,0 +1,56 @@
+import type { KansokuClient, ResolvedKansokuOptions } from "kansoku-js"
+
+const noop = () => {}
+const empty = () => ""
+const resolved = async () => {}
+export function createNoopClient(): KansokuClient {
+  const config: ResolvedKansokuOptions = Object.freeze({
+    baseUrl: "",
+    writeKey: "",
+    sourceService: "",
+    autoStart: false,
+    flushAt: 20,
+    flushIntervalMs: 5000,
+    maxQueueSize: 1000,
+    maxBatchEvents: 100,
+    maxBatchBytes: 1048576,
+    maxRetries: 0,
+    retryBaseDelayMs: 500,
+    requestTimeoutMs: 10000,
+    persistQueue: false,
+    storage: "memory",
+    storageKeyPrefix: "kansoku",
+    sessionTimeoutMs: 1800000,
+    schemaVersions: Object.freeze({}),
+    autocapture: Object.freeze({ pageViews: false, sessions: false }),
+    optOut: true,
+    respectDoNotTrack: false,
+    respectGlobalPrivacyControl: false,
+    debug: false,
+    fetch: (async () => new Response(null, { status: 204 })) as unknown as typeof fetch,
+    now: Date.now,
+    timers: { setTimeout, clearTimeout },
+  })
+  return {
+    track: noop,
+    page: noop,
+    identify: noop,
+    alias: noop,
+    group: noop,
+    experiment: noop,
+    setIdentifiers: noop,
+    reset: noop,
+    start: noop,
+    stop: noop,
+    optOut: noop,
+    optIn: noop,
+    flush: resolved,
+    shutdown: resolved,
+    getAnonymousId: empty,
+    getSessionId: empty,
+    getUserId: () => undefined,
+    isOptedOut: () => true,
+    stats: Object.freeze({ queued: 0, accepted: 0, rejected: 0, dropped: 0 }),
+    config,
+  }
+}

@@ -42,6 +42,13 @@ in  Schema.Project::{
         , dependencies = [ Schema.Dependency.ByName "kansoku-js" ]
         }
       ]
+    , docs =
+      [ Schema.DocRef::{ key = "getting-started", kind = Schema.DocKind.Guide, audience = Schema.DocAudience.User, location = Schema.DocLocation.LocalFile "docs/guides/getting-started.md" }
+      , Schema.DocRef::{ key = "react", kind = Schema.DocKind.Guide, audience = Schema.DocAudience.User, location = Schema.DocLocation.LocalFile "docs/guides/react.md" }
+      , Schema.DocRef::{ key = "delivery-and-privacy", kind = Schema.DocKind.Guide, audience = Schema.DocAudience.User, location = Schema.DocLocation.LocalFile "docs/guides/delivery-and-privacy.md" }
+      , Schema.DocRef::{ key = "kansoku-js-readme", kind = Schema.DocKind.Reference, audience = Schema.DocAudience.User, location = Schema.DocLocation.LocalFile "packages/kansoku-js/README.md" }
+      , Schema.DocRef::{ key = "kansoku-react-readme", kind = Schema.DocKind.Reference, audience = Schema.DocAudience.User, location = Schema.DocLocation.LocalFile "packages/kansoku-react/README.md" }
+      ]
     , okfBundles =
       [ Schema.OkfBundle::{
         , name = "adrs"

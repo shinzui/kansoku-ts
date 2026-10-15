@@ -89,7 +89,7 @@ simulated browser and asserts the exact events handed to a mocked `fetch`.
 
 ## Surprises & Discoveries
 
-The SSR test lives under test/ssr/ssr.test.tsx so the shared no-DOM recipe actually selects it. Dependency ranges resolve React/React DOM 19.3.0 under the existing release-age gate. The package declaration build has no Node ambient types; its development-warning environment guard uses a local declaration rather than adding Node types to browser exports.
+The SSR test lives under test/ssr/ssr.test.tsx so the shared no-DOM recipe actually selects it. Dependency ranges resolve React/React DOM 19.3.0 under the existing release-age gate. Integration checks also cover manual page-view dedupe under StrictMode and re-identification of the same user after reset/logout. The package declaration build has no Node ambient types; its development-warning environment guard uses a local declaration rather than adding Node types to browser exports.
 
 
 ## Decision Log
@@ -153,7 +153,7 @@ The SSR test lives under test/ssr/ssr.test.tsx so the shared no-DOM recipe actua
 
 ## Outcomes & Retrospective
 
-The provider, context, no-op server client and all five hooks are implemented. Eleven React browser tests and one no-DOM SSR test pass, including StrictMode restart and exposure behavior, external-client ownership and stable context/callbacks. The ESM build starts with the use-client banner and the React boundary ADR validates.
+The provider, context, no-op server client and all five hooks are implemented. Thirteen React browser tests and one no-DOM SSR test pass, including StrictMode restart and exposure behavior, external-client ownership and stable context/callbacks. The ESM build starts with the use-client banner and the React boundary ADR validates.
 
 
 ## Context and Orientation

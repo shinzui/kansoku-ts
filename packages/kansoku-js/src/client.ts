@@ -72,8 +72,6 @@ export function resolveOptions(options: KansokuOptions): ResolvedKansokuOptions 
     if (!Number.isSafeInteger(config[field]) || config[field] <= 0)
       throw new TypeError(`${field} must be a positive integer`)
   }
-  if (config.maxBatchEvents > 500 || config.maxBatchBytes > 5 * 1024 * 1024)
-    throw new TypeError("batch limits exceed the server defaults (500 events, 5 MiB)")
   if (
     !Number.isSafeInteger(config.maxRetries) ||
     config.maxRetries < 0 ||

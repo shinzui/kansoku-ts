@@ -1,0 +1,36 @@
+:root {
+  font:
+    18px/1.6 system-ui,
+    sans-serif;
+  color: #172c36;
+  background: #f6f8f4;
+}
+body {
+  max-width: 900px;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+}
+nav {
+  display: flex;
+  gap: 1.5rem;
+  border-bottom: 1px solid #ccd6cc;
+  padding-bottom: 1rem;
+}
+a {
+  color: #116354;
+}
+main {
+  min-height: 120px;
+  padding: 2rem 0;
+}
+button,
+input {
+  font: inherit;
+  padding: 0.5rem 0.8rem;
+}
+output {
+  display: block;
+  font:
+    14px/1.6 ui-monospace,
+    monospace;
+}

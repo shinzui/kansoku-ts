@@ -18,3 +18,9 @@ jobs:
           --extra-substituters https://shinzui.cachix.org
           --extra-trusted-public-keys shinzui.cachix.org-1:QEmAoJrA9WwLP0uxfDgktLi2BRrcvQQWdz8NzcMg4/E=
       - run: nix develop --command just ci
+      - name: Inspect release tarballs without publishing
+        run: |
+          for package in kansoku-js kansoku-react; do
+            (cd "packages/$package" && npm pack --dry-run --json) >> "$GITHUB_STEP_SUMMARY"
+            (cd "packages/$package" && npm publish --dry-run --access public)
+          done

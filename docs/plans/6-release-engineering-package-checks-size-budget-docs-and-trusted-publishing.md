@@ -17,6 +17,11 @@ provenance:
       at: 2026-10-15T03:17:45Z
       mode: "update"
       note: "README/guide coverage for lifecycle, GPC, storage keys, dual-package hazard; unified peer range; ADR candidates extended"
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-10-15T04:12:18Z
+      mode: "implement"
+      note: "Prepare package artifacts, size checks, lockstep release and adoption docs; publish remains approval-gated"
 ---
 
 # Release engineering: package checks, size budget, docs, and trusted publishing
@@ -62,10 +67,10 @@ allows reusing a version number).
 
 ## Progress
 
-- [ ] M1: `just check` runs `publint` and `@arethetypeswrong/cli` against both built packages
+- [x] (2026-10-14; packed checks and size gate pass; broken-export negative probe fails) M1: `just check` runs `publint` and `@arethetypeswrong/cli` against both built packages
   with zero problems and `scripts/check-size.ts` reports gzip sizes under budget
   (`kansoku-js` ≤ 10 KiB, `kansoku-react` ≤ 3 KiB); CI runs the same recipe.
-- [ ] M2: changesets configured with a fixed group, both manifests carry `repository` metadata,
+- [x] (2026-10-14; local changeset, pack and publish dry runs pass; remote CI deferred) M2: changesets configured with a fixed group, both manifests carry `repository` metadata,
   `.github/workflows/release.yml` exists with OIDC permissions, and a pull request's CI shows a
   green `npm pack` listing and `npm publish --dry-run` for both packages.
 - [ ] M3: the maintainer's chosen license is committed as a root `LICENSE` file and declared in
@@ -83,7 +88,7 @@ allows reusing a version number).
 
 ## Surprises & Discoveries
 
-(None yet.)
+Changesets Action latest is v2.1.2 and its inputs differ from the plan’s v1 sketch: version-script, publish-script, commit-message and pr-title are used. The action is pinned at its release commit and the workflow stays disabled behind KANSOKU_RELEASE_ENABLED until explicit activation. A scratch versioning run advances both manifests to 0.1.0 and the concrete peer to ^0.1.0. Bun’s local-file peer resolution tried the unpublished npm name, so npm was used to install pre-release tarballs before testing both runtimes. Runtime version exports read manifest metadata so changeset version cannot leave stale constants. Root typecheck builds package exports first, allowing a clean clone to resolve workspace declaration imports. attw esm-only also ignores node10 resolution; Node import/require and packed consumer checks independently verify supported runtimes.
 
 
 ## Decision Log
@@ -145,7 +150,7 @@ allows reusing a version number).
 
 ## Outcomes & Retrospective
 
-(To be filled during and after implementation.)
+Both packages pass publint and attw packed checks, publish dry runs, a broken-export negative probe, and installation/import from tarballs in a scratch consumer (npm installed the tarballs; both Bun and Node imported them). Changesets lists both packages for 0.1.0 from the fixed group. Guides and package references are registered in Mori. Durable context is covered by ADR-1 (contracts), ADR-2 (delivery/lifecycle), ADR-3 (identity/session), ADR-6 (two packages/ESM) and ADR-7 (lockstep/trusted publishing), plus capture and React boundary ADRs. License selection is pending; no LICENSE text has been invented and nothing has been published. Exact pinned-server execution, visibility, bootstrap/trusted publisher setup and explicit publish authorization remain release preconditions.
 
 
 ## Context and Orientation
@@ -974,3 +979,5 @@ whose completion gates M4.
 Prerequisites declared by the MasterPlan: EP-1 Complete before M1; EP-5 Complete, the drift-guard
 gate checked, and the user's explicit approval before M4. The MasterPlan's registry row for this
 plan records the milestone-level dependency explicitly.
+
+Revision note (2026-10-14): following the user’s direction, local package behavior and dry-run evidence are accepted without waiting on remote CI or creating a feature branch/PR. Release automation is prepared but disabled until maintainer preconditions and approval. License selection remains pending through the session’s explicit question.

@@ -1,4 +1,4 @@
-import type { JsonObject } from "kansoku-js"
+import type { JsonObject, KansokuClient } from "kansoku-js"
 import { useEffect, useRef } from "react"
 
 import { useKansoku } from "./useKansoku.js"
@@ -9,8 +9,10 @@ let warned = false
 export function usePageView(key: string, properties?: JsonObject): void {
   const client = useKansoku()
   const latest = useRef(properties)
+  const previous = useRef<{ client: KansokuClient; key: string } | undefined>(undefined)
   latest.current = properties
   useEffect(() => {
+    if (previous.current?.client === client && previous.current.key === key) return
     const production = typeof process !== "undefined" && process.env?.NODE_ENV === "production"
     if (client.config.autocapture.pageViews && !production && !warned) {
       warned = true
@@ -19,5 +21,6 @@ export function usePageView(key: string, properties?: JsonObject): void {
       )
     }
     client.page(latest.current)
+    previous.current = { client, key }
   }, [client, key])
 }

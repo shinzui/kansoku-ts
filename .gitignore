@@ -14,3 +14,7 @@ result-*
 bun.lock.bak
 .DS_Store
 .pre-commit-config.yaml
+test-results/
+playwright-report/
+examples/*/.env.local
+!examples/*/.env.example

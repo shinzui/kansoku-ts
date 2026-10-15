@@ -9,8 +9,11 @@ export function useIdentify(userId: string | undefined, traits?: JsonObject): vo
   latest.current = traits
   const previous = useRef<{ client: KansokuClient; userId: string } | undefined>(undefined)
   useEffect(() => {
-    if (!userId || (previous.current?.client === client && previous.current.userId === userId))
+    if (!userId) {
+      previous.current = undefined
       return
+    }
+    if (previous.current?.client === client && previous.current.userId === userId) return
     client.identify(userId, latest.current)
     previous.current = { client, userId }
   }, [client, userId])

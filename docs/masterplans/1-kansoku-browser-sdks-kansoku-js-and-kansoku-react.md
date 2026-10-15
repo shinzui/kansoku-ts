@@ -219,8 +219,8 @@ OpenAPI document and catalog; later refreshes are an explicit, reviewed step.
 | 2 | kansoku-js core: event envelope, identity and session state, batched delivery, and exit flush | docs/plans/2-kansoku-js-core-event-envelope-identity-and-session-state-batched-delivery-and-exit-flush.md | EP-1 | None | Complete |
 | 3 | kansoku-js browser capture: page views, navigation, attribution, identity helpers, and experiments | docs/plans/3-kansoku-js-browser-capture-page-views-navigation-attribution-identity-helpers-and-experiments.md | EP-2 | None | Complete |
 | 4 | kansoku-react: provider, hooks, and router-agnostic page tracking | docs/plans/4-kansoku-react-provider-hooks-and-router-agnostic-page-tracking.md | EP-3 | None | Complete |
-| 5 | Examples, live contract conformance, and real-browser smoke test | docs/plans/5-examples-live-contract-conformance-and-real-browser-smoke-test.md | EP-3 (M1, M3, M4); EP-4 for M2 (React example) | EP-6 | In Progress |
-| 6 | Release engineering: package checks, size budget, docs, and trusted publishing | docs/plans/6-release-engineering-package-checks-size-budget-docs-and-trusted-publishing.md | EP-1; final milestone (first publish) requires EP-5 Complete | EP-2, EP-3, EP-4 | Not Started |
+| 5 | Examples, live contract conformance, and real-browser smoke test | docs/plans/5-examples-live-contract-conformance-and-real-browser-smoke-test.md | EP-3 (M1, M3, M4); EP-4 for M2 (React example) | EP-6 | Complete |
+| 6 | Release engineering: package checks, size budget, docs, and trusted publishing | docs/plans/6-release-engineering-package-checks-size-budget-docs-and-trusted-publishing.md | EP-1; final milestone (first publish) requires EP-5 Complete | EP-2, EP-3, EP-4 | In Progress |
 
 Status values: Not Started, In Progress, Complete, Cancelled.
 Hard Deps and Soft Deps reference other rows by their # prefix (e.g., EP-1, EP-3).
@@ -632,11 +632,13 @@ by navigating away and asserting the server-side mock received the final batch.
 
 ## Progress
 
-EP-1 is locally accepted as of 2026-10-14. Workspace, pinned generated contracts, test harness and ADR validation pass. At the user’s direction, remote CI is deferred verification and does not block functional package implementation. EP-2 is Complete: the built kansoku-js core delivers real HTTP batches; 28 core tests and the DOM-free contract checks pass. EP-3 is Complete with 41 package tests and SSR safety accepted. EP-4 is Complete with the provider/hooks, StrictMode tests, SSR test and build directive accepted. EP-5 is In Progress for runnable examples and native browser/server conformance.
+EP-1 through EP-5 are Complete for implementation as of 2026-10-14. Both packages are functional: kansoku-js includes browser capture, identity, exposure and persistent delivery; kansoku-react includes the provider and hooks. Final local checks pass: 59 DOM/unit tests, 2 no-DOM tests, 7 native server conformance tests, 2 Chromium mock-server tests and 2 Chromium checks against real metrics. Packed exports/types, npm publish dry runs and Node/Bun tarball imports pass. Gzip bundles are 8,588 bytes and 1,764 bytes within their 10/3 KiB budgets.
+
+EP-6 is In Progress: package checks, lockstep changesets, disabled release automation, documentation and ADR distillation are prepared. The license choice is pending. No package was published, no release workflow was enabled, and no repository visibility was changed. Historical pinned-server execution and the maintainer’s license/visibility/bootstrap/publisher decisions remain release prerequisites. Remote CI follow-up is deferred at the user’s direction; it is not blocking package implementation.
 
 Cross-plan gates not represented by a single child plan:
 
-- [ ] Exit-flush representative check passes in both forms: EP-2's happy-dom unit test and
+- [x] Exit-flush representative check passes in both forms: EP-2's happy-dom unit test and
   EP-5's Chromium smoke test observe the final batch after navigation.
 - [ ] Vendored-contract drift guard is green against a live server at the pinned commit before
   EP-6 publishes `0.1.0`.
@@ -646,6 +648,9 @@ Cross-plan gates not represented by a single child plan:
 
 
 ## Surprises & Discoveries
+
+- Discovery (implementation, 2026-10-14): Chromium sends keepalive after navigation but may destroy the document before its acknowledgement handler can clear sessionStorage. Recovery retries the same eventId; the smoke check proves pre-reload receipt, stable identity on retry and eventual mirror clearing. Disabling exit listeners fails the receipt assertion. See ADR-2 and EP-5 for evidence.
+- Discovery (implementation, 2026-10-14): the live catalog matches the pinned document against the currently built server in `mori://shinzui/kansoku`, whose checkout advanced beyond the pin. Seven native checks and both browser examples pass, but that does not prove execution of the exact historical server revision; the release integration gate remains open.
 
 - Discovery (planning, 2026-10-14): `navigator.sendBeacon` cannot be the exit transport. Kansoku
   accepts credentials only in `X-Api-Key` or `Authorization` headers, and the Beacon API sends no
@@ -845,4 +850,4 @@ and ADR content) carry the cascade. EP-3 and EP-5 had no module-format content t
 
 ## Outcomes & Retrospective
 
-(To be filled during and after implementation.)
+Functional browser and React SDKs, runnable examples, generated contracts, local verification and release preparation are implemented. Durable context is distilled in seven ADRs. The initiative remains unfinished at release prerequisites: license choice, historical pinned-server verification, repository visibility and explicit first-publish/trusted-publisher approval. The user directed that working package behavior take priority over remote CI; no further CI waiting was used.

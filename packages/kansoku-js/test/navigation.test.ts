@@ -2,6 +2,16 @@ import { expect, test } from "bun:test"
 
 import { fixture, nextNavigation } from "./capture-helper.js"
 
+test("multiple SDK clients can stop out of order without leaving their own History wrappers", async () => {
+  const original = history.pushState
+  const first = fixture({ autocapture: { sessions: false } })
+  const second = fixture({ autocapture: { sessions: false } })
+  first.client.stop()
+  second.client.stop()
+  expect(history.pushState).toBe(original)
+  await Promise.all([first.client.flush(), second.client.flush()])
+})
+
 test("captures SPA navigation once per origin/path/query and ignores hashes", async () => {
   history.replaceState({}, "", "/")
   const original = history.pushState

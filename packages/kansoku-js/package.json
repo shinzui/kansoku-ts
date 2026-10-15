@@ -1,8 +1,19 @@
 {
   "name": "kansoku-js",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Browser SDK for the Kansoku analytics service",
+  "keywords": [
+    "analytics",
+    "browser",
+    "kansoku"
+  ],
+  "homepage": "https://github.com/shinzui/kansoku-ts#readme",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shinzui/kansoku-ts.git",
+    "directory": "packages/kansoku-js"
+  },
   "files": [
     "dist",
     "README.md",

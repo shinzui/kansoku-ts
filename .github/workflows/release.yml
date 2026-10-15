@@ -1,0 +1,47 @@
+name: Release
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+concurrency: release-${{ github.ref }}
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+jobs:
+  release:
+    # Enable only after the maintainer completes the release preconditions.
+    if: vars.KANSOKU_RELEASE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: DeterminateSystems/nix-installer-action@v21
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Install the pinned ADR validator
+        run: >-
+          nix profile install github:shinzui/okf/beb89ab3bcbb705276397060d95f5580f72fbe83#okf-cli
+          --extra-substituters https://shinzui.cachix.org
+          --extra-trusted-public-keys shinzui.cachix.org-1:QEmAoJrA9WwLP0uxfDgktLi2BRrcvQQWdz8NzcMg4/E=
+      - name: Ensure npm supports trusted publishing
+        run: npm install --global npm@11
+      - run: nix develop --command just ci
+      - uses: changesets/action@66d7d1ddafddf1ef45f98ee51a7496f9cdadb2f4 # v2.1.2
+        with:
+          version-script: nix develop --command bun x --no-install changeset version
+          publish-script: nix develop --command bun run release
+          commit-message: |
+            chore(release): version packages
+
+            MasterPlan: docs/masterplans/1-kansoku-browser-sdks-kansoku-js-and-kansoku-react.md
+            ExecPlan: docs/plans/6-release-engineering-package-checks-size-budget-docs-and-trusted-publishing.md
+            Intention: intention_01m4ymqn7xe1a8tz8v7r78e34y
+          pr-title: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: ${{ vars.KANSOKU_NPM_PROVENANCE || 'true' }}

@@ -7,6 +7,32 @@ import type { ReactNode } from "react"
 import { KansokuProvider, useExperiment, useIdentify, usePageView, useTrack } from "../src/index.js"
 import { fixture } from "./helpers.js"
 
+test("manual page-view hooks emit once under StrictMode", async () => {
+  const { client, events } = fixture()
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <StrictMode>
+      <KansokuProvider client={client}>{children}</KansokuProvider>
+    </StrictMode>
+  )
+  renderHook(() => usePageView("/strict"), { wrapper })
+  await client.flush()
+  expect(events()).toHaveLength(1)
+})
+
+test("identifying the same user after logout restores the cleared identity", async () => {
+  const { client, events, wrapper } = fixture()
+  const hook = renderHook(({ id }: { id: string | undefined }) => useIdentify(id), {
+    wrapper,
+    initialProps: { id: "same-user" as string | undefined },
+  })
+  client.reset()
+  hook.rerender({ id: undefined })
+  hook.rerender({ id: "same-user" })
+  await client.flush()
+  expect(events().filter((event) => event.eventName === "identify")).toHaveLength(2)
+  expect(client.getUserId()).toBe("same-user")
+})
+
 test("useTrack sends events and keeps a stable function reference", async () => {
   const { client, events, wrapper } = fixture()
   const hook = renderHook(() => useTrack(), { wrapper })

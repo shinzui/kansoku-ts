@@ -15,12 +15,17 @@
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "build": "just build",
-    "test": "just test"
+    "test": "just test",
+    "release": "bun run build && bun x --no-install changeset publish"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@changesets/cli": "3.0.3",
     "@happy-dom/global-registrator": "^20.14.5",
+    "@playwright/test": "^1",
     "@types/bun": "1.4.2",
     "openapi-typescript": "^7.13.0",
+    "publint": "0.3.25",
     "typescript": "^5.9"
   }
 }

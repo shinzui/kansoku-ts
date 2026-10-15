@@ -97,7 +97,7 @@ build directly on the surface this plan adds.
 
 ## Surprises & Discoveries
 
-Exposure dedupe is persisted only after successful enqueue, so beforeSend redaction or capacity drops do not prevent a later valid exposure. The SSR smoke injects a successful transport rather than waiting on an unavailable localhost service; it exercises import and capture/lifecycle safety without adding a network prerequisite.
+Integration with multiple clients now skips inactive SDK History wrappers when clients stop out of order, preserving the original method after both stop. Exposure dedupe is persisted only after successful enqueue, so beforeSend redaction or capacity drops do not prevent a later valid exposure. The SSR smoke injects a successful transport rather than waiting on an unavailable localhost service; it exercises import and capture/lifecycle safety without adding a network prerequisite.
 
 
 ## Decision Log

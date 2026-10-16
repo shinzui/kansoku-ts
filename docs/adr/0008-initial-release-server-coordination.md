@@ -3,9 +3,9 @@ type: Architecture Decision Record
 title: Initial release server coordination
 description: Coordinate browser delivery and identity contracts with the first Kansoku deployment using mandatory live acceptance.
 docId: ADR-8
-status: Proposed
+status: Accepted
 date: 2026-10-15
-timestamp: 2026-10-15T15:41:12Z
+timestamp: 2026-10-16T05:41:50Z
 generated:
   by: process:codex
   at: 2026-10-15T15:41:12Z
@@ -18,8 +18,8 @@ generated:
 Plans 7 and 8 consume the initial server initiative at
 `mori://shinzui/kansoku/masterplans/5-act-on-rev-1-close-silent-loss-paths-add-metric-filters-and-enrich-web-analytics`.
 The review found incompatible timestamp, schema, beacon and session assumptions.
-Existing ADRs describe current behavior; this record is proposed until implementation evidence
-and updates to those accepted decisions are complete.
+The implementation and final joint acceptance now pass; existing accepted ADRs retain the
+runtime details and this record accepts their initial-release coordination.
 
 ## Decision
 
@@ -39,12 +39,17 @@ the handoff is not authentication. Failed cookie persistence does not silently e
 
 Release acceptance requires the final server contract pin and zero skipped feature checks. Local
 optional compatibility tests are not release evidence. JSON filters and nullable namespaced group
-values follow the server-generated API. Proposed server decisions are tracked in its MasterPlan;
-this repository's implementation updates ADRs 2–4 when the corresponding behavior lands.
+values follow the server-generated API. Accepted server decisions are retained in
+`mori://shinzui/kansoku/okf/adrs/concepts/ADR-11`; this repository's accepted ADRs 2–4 and 6
+retain delivery, identity/privacy and artifact boundaries. Bot detection defaults to a versioned
+handwritten flag matcher, with explicit drop/off policies; it cannot disable independent
+server classification. No empirical accuracy or external rule-database license is implied.
 
 ## Consequences
 
-SDK and server may develop independently but release together only after actual browser/native
-conformance. Default keepalive remains until the supported beacon route is published; no queued
-transport is described as guaranteed delivery. Cross-origin identity remains evidence-based and
-conflicts may intentionally remain unresolved.
+The final packaged server gate passes required live, protocol, real-example, identity/bot and
+beacon/BFCache browser checks without feature skips, and the generated contract pin is refreshed
+to the completed server source. An ordinary clean-clone workflow also passes with the previously
+accepted SDK. Default keepalive remains stable; beacon is explicit and queued transport is not
+guaranteed delivery. Cross-origin identity remains evidence-based and conflicts can remain
+unresolved. This accepts source/local-package contracts without publishing or deploying them.

@@ -47,7 +47,7 @@ Delivery remains best effort; a queued beacon is not server acceptance.
 - [x] M2: Lifecycle-safe beacon/keepalive exit delivery and governed page_leave pass browsers.
 - [x] M3: Bot flags and email_hmac vocabulary agree with server/generated types.
 - [x] M4: identify v2 and identify_once v1 helpers validate and update identity consistently.
-- [ ] M5: Final contract pin and required live/browser conformance pass without feature skips.
+- [x] M5: Final contract pin and required live/browser conformance pass without feature skips.
 
 ## Surprises & Discoveries
 
@@ -65,7 +65,7 @@ one non-skipped live case per mode (23 assertions each), using SDK commit
 6adee63714a631985cb9be1ec0e5f9fec7a4ecb6 and server contract pin
 6517962 in `mori://shinzui/kansoku` (commit artifact URI pending). Evidence is recorded by
 `mori://shinzui/kansoku/plans/40-person-properties-set-and-set-once-user-traits`.
-M4 is complete; the other transport/browser/release milestones remain open for the joint gate.
+At the M4 checkpoint the other transport/browser/release milestones remained open; the final joint gate below now closes them.
 
 
 M1/M2 acceptance (2026-10-16): the eight new transport/lifecycle/privacy unit cases cover
@@ -94,22 +94,39 @@ Page-leave is lifecycle telemetry, not user engagement. Set-once initializes; la
 
 ## Outcomes & Retrospective
 
-M1, M2 and M4 are complete. The pinned server implements both beacon media types and shared
-credential admission/deduplication. The SDK stamps only serialization copies, retains true
-beacon submissions for acknowledged retries, shares one document byte allowance, and emits
-privacy-gated page leaves with original view attribution. Opt-out and suppressed exits retire
-old snapshots so opt-in cannot resurrect a former user's leave event.
+All five milestones are Complete on 2026-10-16. Serialization-time clocks preserve queued
+producer content; acknowledged retries and splits keep logical IDs. Beacon uses the supported
+body-key route, one conservative complete-body Document budget and separate best-effort
+accounting; mirrored submissions remain pending until acknowledgement. Lifecycle/SPA/BFCache
+views retain original identity and retire suppressed/reset snapshots. Explicit identify v2 and
+identify_once v1 consume generated catalog-v4 validation. Bot flag/drop/off and email_hmac
+vocabulary agree with the server, and the local cross-origin plan is Complete.
 
-The full unit suite has 77 passing cases and two separate no-DOM/SSR cases. Source build,
-types, lint, format, package, contract and strict-ADR checks pass. JavaScript gzip is 10150 bytes;
-React is 1843 bytes. Required packaged Chromium acceptance has six non-skipped cases, including
-actual shared quota refusal and an actual restored BFCache document. The owned server also
-passes the required governed-trait live case in all three telemetry modes. Runtime consumer
-commit is 0a4eea715b5f34fad8593e3dfd123ce407976c95; its artifact hash is recorded by
-`mori://shinzui/kansoku/plans/39-beacon-ingest-route-for-page-exit-delivery`.
-The source contract pin is server commit 3d0e3d8 under `mori://shinzui/kansoku`
-(commit artifact URI pending). M3 bot/email_hmac and local cross-origin behavior pass the required real-server/browser checks; M5 remains open for
-`mori://shinzui/kansoku/plans/38-single-tenant-consumption-guide-for-dashboards-and-experiments`.
+Source checks pass 85 unit and two explicit no-DOM/SSR cases, plus types, lint, format,
+generated-contract drift, package validation and eight strict ADRs. Minified JavaScript/React
+gzip sizes are 8565/1550 bytes within unchanged 10240/3072 budgets. Optional unconfigured
+local tests are not counted as live evidence.
+
+The final joint packaged gate passes nine required live cases, three actual beacon/credential
+bucket/Retry-After cases, two real-server vanilla/React examples, eight multi-origin shared
+identity/handoff/privacy/bot Chromium families and six beacon/origin/quota/BFCache Chromium
+cases, all with zero feature skips. The clock case proves queued six-hour age is restored by
+sentAt normalization rather than merely accepting a future event. Duplicate retry preserves
+one canonical event; email_hmac and explicit set/once versions reach actual metric queries.
+A separate trait helper case passes in each of three telemetry modes.
+
+Runtime/test consumer commit f26f74358d2931a94b40c1a7077f6b7630edd01a produced JavaScript
+SHA256 f4a20924a5f97eb4774cd3ed2cf0a369efb93e045bfb561de1957cd36e460f56. Final metadata pins
+mori://shinzui/kansoku at commit bda6b3a0a870ab5420fe5ffd8590f250af2a6546
+(commit artifact URI pending); generated artifacts are unchanged from the tested wire contract.
+Acceptance ownership and private/sanitized evidence are recorded by
+mori://shinzui/kansoku/plans/38-single-tenant-consumption-guide-for-dashboards-and-experiments.
+The ordinary clean-clone/restart workflow also passes using the previously accepted consumer
+0a4eea715b5f34fad8593e3dfd123ce407976c95 through this repository's Nix toolchain.
+
+ADR-8 accepts the completed cross-plan contract; ADRs 2–4 and 6 retain runtime decisions.
+This establishes source-built/local-package conformance. No npm package, deployment or hosted
+endpoint is published, and default keepalive remains stable with beacon explicitly selected.
 
 ## Context and Orientation
 

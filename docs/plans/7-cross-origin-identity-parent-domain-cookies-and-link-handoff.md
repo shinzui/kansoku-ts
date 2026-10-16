@@ -111,7 +111,7 @@ assertions prevent an early empty zero or the app's own page view from passing t
 cases. Nine required live cases also pass, including independent email_hmac identity stitching
 and immutable duplicate retry. Server acceptance ownership remains
 mori://shinzui/kansoku/plans/38-single-tenant-consumption-guide-for-dashboards-and-experiments;
-its final packaged release gate is tracked by the local plan 8.
+its final packaged release gate passes with zero feature skips, and the local plan 8 is Complete.
 
 
 ## Context and Orientation

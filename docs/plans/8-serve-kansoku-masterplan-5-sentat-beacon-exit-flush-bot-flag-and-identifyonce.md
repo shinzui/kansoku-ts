@@ -44,7 +44,7 @@ Delivery remains best effort; a queued beacon is not server acceptance.
 
 
 - [x] M1: Transport-time sentAt uses the event clock and immutable event IDs across retries.
-- [ ] M2: Lifecycle-safe beacon/keepalive exit delivery and governed page_leave pass browsers.
+- [x] M2: Lifecycle-safe beacon/keepalive exit delivery and governed page_leave pass browsers.
 - [ ] M3: Bot flags and email_hmac vocabulary agree with server/generated types.
 - [x] M4: identify v2 and identify_once v1 helpers validate and update identity consistently.
 - [ ] M5: Final contract pin and required live/browser conformance pass without feature skips.
@@ -68,6 +68,16 @@ one non-skipped live case per mode (23 assertions each), using SDK commit
 M4 is complete; the other transport/browser/release milestones remain open for the joint gate.
 
 
+M1/M2 acceptance (2026-10-16): the eight new transport/lifecycle/privacy unit cases cover
+serialization clocks, retries/splits, Unicode envelope bytes, cross-instance budget sharing,
+false/missing/throw fallback, original view attribution, SPA/BFCache intervals, beforeSend,
+and privacy transitions. The Chromium consumer checks same/cross-origin text/plain without
+OPTIONS, denied-origin zero rows, real keepalive quota refusal, oversized event retention,
+and retained BFCache state with distinct view IDs. The standard headless-shell delegate disables
+BFCache, so the proof explicitly uses full Chromium and waits for navigation commit rather
+than a load event that restoration does not emit. The server harness records the consumer
+commit and built JavaScript SHA-256 and refuses missing/zero/skipped required browser cases.
+
 Server schemaVersion defaults to v1; a v2 schema does not upgrade existing helper payloads.
 The initial proposal removed mirrored events after sendBeacon returned true and treated a
 60 KiB allowance as independent for each call. Neither proves receipt or respects the shared
@@ -84,12 +94,22 @@ Page-leave is lifecycle telemetry, not user engagement. Set-once initializes; la
 
 ## Outcomes & Retrospective
 
+M1, M2 and M4 are complete. The pinned server implements both beacon media types and shared
+credential admission/deduplication. The SDK stamps only serialization copies, retains true
+beacon submissions for acknowledged retries, shares one document byte allowance, and emits
+privacy-gated page leaves with original view attribution. Opt-out and suppressed exits retire
+old snapshots so opt-in cannot resurrect a former user's leave event.
 
-M4 is implemented and verified against the owned packaged server in all three telemetry
-modes. Its generated trait vocabulary, version defaults, explicit overrides, privacy gates,
-identity updates, alias argument reservation and React/SSR behavior pass the local gates.
-M1 is implemented; M2/M3/M5 remain open; M4 evidence does not establish beacon delivery or final release
-conformance.
+The full unit suite has 77 passing cases and two separate no-DOM/SSR cases. Source build,
+types, lint, format, package, contract and strict-ADR checks pass. JavaScript gzip is 10150 bytes;
+React is 1843 bytes. Required packaged Chromium acceptance has six non-skipped cases, including
+actual shared quota refusal and an actual restored BFCache document. The owned server also
+passes the required governed-trait live case in all three telemetry modes. Runtime consumer
+commit is 0a4eea715b5f34fad8593e3dfd123ce407976c95; its artifact hash is recorded by
+`mori://shinzui/kansoku/plans/39-beacon-ingest-route-for-page-exit-delivery`.
+The source contract pin is server commit 3d0e3d8 under `mori://shinzui/kansoku`
+(commit artifact URI pending). M3 and M5, plus the local cross-origin plan, remain open for
+`mori://shinzui/kansoku/plans/38-single-tenant-consumption-guide-for-dashboards-and-experiments`.
 
 ## Context and Orientation
 
@@ -231,22 +251,3 @@ with implementation; ADR-8 records the proposed coordination now.
 
 Revision note (2026-10-15): reconcile timestamp clock, quota/acknowledgement semantics, schema
 versions, email_hmac, JSON filters and mandatory conformance with the reviewed server MP-5.
-
-M1/M2 implementation checkpoint (2026-10-16): sentAt is stamped on serialization copies
-with the configured clock, including retries, split requests and beacons. The seven new
-transport/lifecycle unit cases prove immutable IDs/content, conservative cross-instance
-UTF-8 budgeting, false/missing/throw fallback, original page identity/session and monotonic
-duration, SPA/BFCache event handling, privacy and beforeSend. The full suite has 76 passing
-unit cases, with optional live/SSR cases separated from required evidence. Source build,
-types, lint and package checks pass; JavaScript gzip is 10124 bytes and React 1843 bytes.
-The contract pin now contains the implemented beacon API in server commit 3d0e3d8 under
-`mori://shinzui/kansoku` (commit artifact URI pending). Required Chromium/native packaged
-acceptance remains pending, including an actual preserved BFCache document.
-
-Chromium source acceptance now passes six required, non-skipped cases against an owned
-server: same/cross-origin text/plain without OPTIONS; denied-origin zero rows; actual shared
-keepalive quota refusal plus fallback; oversized UTF-8 envelope retention; and a retained
-BFCache document with two distinct view intervals and one pre-restore leave. Full Chromium
-is required because the headless-shell delegate disables BFCache; its restoration waits for
-navigation commit and asserts the document token and queued event IDs. The containing server
-plan records private evidence. Packaged joint acceptance is still required before M2 closes.

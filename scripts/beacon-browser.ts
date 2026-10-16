@@ -77,6 +77,7 @@ const servers = [origin, denied].map(() =>
 )
 const browser = await chromium.launch({
   headless: true,
+  channel: "chromium",
   ignoreDefaultArgs: ["--disable-back-forward-cache"],
 })
 const context = await browser.newContext()
@@ -251,7 +252,7 @@ try {
     )
     const saved = await page.evaluate(() => window.saved)
     await page.goto(origin + "/away")
-    await page.goBack()
+    await page.goBack({ waitUntil: "commit" })
     if ((await page.evaluate(() => window.saved)) !== saved)
       console.log(
         "BFCache diagnostic",
@@ -270,7 +271,15 @@ try {
       saved,
       "actual BFCache restoration must retain the document",
     )
-    assert.equal(await page.evaluate(() => window.client.stats.queued > 0), true)
+    const restored = await page.evaluate(
+      () =>
+        JSON.parse(
+          sessionStorage.getItem(`${window.client.config.storageKeyPrefix}.queue`) ?? "[]",
+        ) as Array<{ eventName: string; eventId: string }>,
+    )
+    assert.equal(restored.filter((event) => event.eventName === "page_view").length, 2)
+    assert.equal(restored.filter((event) => event.eventName === "page_leave").length, 1)
+    assert.equal(new Set(restored.map((event) => event.eventId)).size, restored.length)
     await page.evaluate(() => window.client.flush())
     await page.close()
     cases++

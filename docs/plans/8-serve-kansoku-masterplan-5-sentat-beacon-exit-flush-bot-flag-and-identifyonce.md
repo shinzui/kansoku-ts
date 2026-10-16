@@ -238,7 +238,15 @@ transport/lifecycle unit cases prove immutable IDs/content, conservative cross-i
 UTF-8 budgeting, false/missing/throw fallback, original page identity/session and monotonic
 duration, SPA/BFCache event handling, privacy and beforeSend. The full suite has 76 passing
 unit cases, with optional live/SSR cases separated from required evidence. Source build,
-types, lint and package checks pass; JavaScript gzip is 10115 bytes and React 1843 bytes.
+types, lint and package checks pass; JavaScript gzip is 10124 bytes and React 1843 bytes.
 The contract pin now contains the implemented beacon API in server commit 3d0e3d8 under
 `mori://shinzui/kansoku` (commit artifact URI pending). Required Chromium/native packaged
 acceptance remains pending, including an actual preserved BFCache document.
+
+Chromium source acceptance now passes six required, non-skipped cases against an owned
+server: same/cross-origin text/plain without OPTIONS; denied-origin zero rows; actual shared
+keepalive quota refusal plus fallback; oversized UTF-8 envelope retention; and a retained
+BFCache document with two distinct view intervals and one pre-restore leave. Full Chromium
+is required because the headless-shell delegate disables BFCache; its restoration waits for
+navigation commit and asserts the document token and queued event IDs. The containing server
+plan records private evidence. Packaged joint acceptance is still required before M2 closes.

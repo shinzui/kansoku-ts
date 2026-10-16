@@ -83,6 +83,11 @@ test("whole UTF-8 envelopes share a document budget across clients and lifecycle
     bodies.push(body)
     return true
   })
+  const capped = fixture({ maxBatchBytes: 100 })
+  capped.client.track("capped")
+  hide()
+  expect(bodies).toHaveLength(0)
+  await capped.client.shutdown()
   const a = fixture()
   const b = fixture()
   for (const client of [a.client, b.client])

@@ -303,7 +303,7 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
     for (const event of queue.toJSON()) {
       if (batch.length >= config.maxBatchEvents) break
       const candidate = serializeBatch(config, [...batch, event], beacon)
-      if (jsonBytesRaw(candidate) + budget.bytes > 61440) continue
+      if (jsonBytesRaw(candidate) > Math.min(config.maxBatchBytes, 61440 - budget.bytes)) continue
       batch.push(event)
       serialized = candidate
     }

@@ -5,7 +5,7 @@ description: Share browser identity through an adapter while keeping the pending
 docId: ADR-3
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-15T04:05:00Z
+timestamp: 2026-10-16T01:36:00Z
 generated:
   by: process:codex
   at: 2026-10-15T04:05:00Z
@@ -34,6 +34,19 @@ Cookie values use path `/`, SameSite=Lax, Secure on HTTPS and at most a 400-day 
 
 Only the server's closed identifier vocabulary is accepted, as described by
 `mori://shinzui/kansoku/okf/adrs/concepts/ADR-5`.
+
+`identify` defaults to explicit schema version 2; `identifyOnce` defaults to version 1.
+Both validate declared scalar traits and a nonempty user ID before changing active identity.
+Both preserve the anonymous ID, allowing server implicit-cookie stitching, then enqueue through
+the ordinary privacy and delivery gates. Per-call or configured version overrides remain
+explicit: identify v1 is identity-only. Null is rejected for governed scalar traits; omitted
+properties do not change current values. Set-once initializes a value and a later set can replace
+it. These public producer observations are never authorization facts. The server owns ordering,
+storage and erasure in `mori://shinzui/kansoku/okf/adrs/concepts/ADR-16`.
+
+React `useIdentifyOnce` follows user/client changes like `useIdentify`. A ref suppresses
+duplicate effect setup under StrictMode while an absent user resets the hook's remembered
+identity. The name describes server trait semantics, not a guarantee of one React mount.
 
 `kansoku.exposures` stores `{ sessionId, keys }`, where each key joins experiment and
 variant with a NUL separator. A stale session invalidates these keys. `reset()` clears

@@ -22,6 +22,11 @@ provenance:
       at: 2026-10-15T15:43:16Z
       mode: "update"
       note: "Reconcile first-release APIs, domain semantics, dependencies and acceptance with the source-validated MP-5 review."
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-10-16T01:19:47Z
+      mode: "implement"
+      note: "Implement the M4 governed identity/helper portion as the pinned consumer of server EP-40; remaining transport/browser release milestones stay with the joint final gate."
 ---
 
 # Serve Kansoku MasterPlan 5: sentAt, beacon exit flush, bot flag, and identifyOnce
@@ -45,6 +50,15 @@ Delivery remains best effort; a queued beacon is not server acceptance.
 - [ ] M5: Final contract pin and required live/browser conformance pass without feature skips.
 
 ## Surprises & Discoveries
+
+M4 implementation (2026-10-16): the pinned catalog generates one shared runtime trait map
+and operation versions. Both helpers validate before mutating active identity and preserve
+explicit per-call/configured legacy overrides. useIdentifyOnce follows the existing hook
+lifecycle, including StrictMode suppression and logout reset; no-DOM SSR stays inert.
+Unit/type/lint/strict-ADR checks pass (69 unit cases plus two explicit SSR cases); JavaScript
+9138-byte and React 1812-byte gzip outputs remain below their 10240/3072 budgets. A required
+live fixture now asserts actual accepted helper envelopes and server stitching/current-value
+precedence; its packaged-server execution remains pending, so M4 stays unchecked.
 
 
 Server schemaVersion defaults to v1; a v2 schema does not upgrade existing helper payloads.

@@ -4,7 +4,14 @@ import { renderHook } from "@testing-library/react"
 import { StrictMode } from "react"
 import type { ReactNode } from "react"
 
-import { KansokuProvider, useExperiment, useIdentify, usePageView, useTrack } from "../src/index.js"
+import {
+  KansokuProvider,
+  useExperiment,
+  useIdentify,
+  useIdentifyOnce,
+  usePageView,
+  useTrack,
+} from "../src/index.js"
 import { fixture } from "./helpers.js"
 
 test("manual page-view hooks emit once under StrictMode", async () => {
@@ -98,4 +105,26 @@ test("useExperiment relies on core dedupe under StrictMode and follows variant c
   hook.rerender({ variant: "c" })
   await client.flush()
   expect(events().map((event) => event.properties.variant)).toEqual(["b", "c"])
+})
+
+test("identifyOnce follows user/client lifecycle without duplicate StrictMode capture", async () => {
+  const { client, events } = fixture()
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <StrictMode>
+      <KansokuProvider client={client}>{children}</KansokuProvider>
+    </StrictMode>
+  )
+  const hook = renderHook(
+    ({ id }: { id: string | undefined }) => useIdentifyOnce(id, { initial_plan: "starter" }),
+    { wrapper, initialProps: { id: "same" as string | undefined } },
+  )
+  hook.rerender({ id: "same" })
+  await client.flush()
+  expect(events().filter((event) => event.eventName === "identify_once")).toHaveLength(1)
+  expect(client.getUserId()).toBe("same")
+  client.reset()
+  hook.rerender({ id: undefined })
+  hook.rerender({ id: "same" })
+  await client.flush()
+  expect(events().filter((event) => event.eventName === "identify_once")).toHaveLength(2)
 })

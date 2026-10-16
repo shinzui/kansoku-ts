@@ -5,7 +5,7 @@ description: Generate SDK wire types from committed server contracts and refresh
 docId: ADR-1
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-15T19:58:00Z
+timestamp: 2026-10-16T01:36:00Z
 generated:
   by: process:codex
   at: 2026-10-15T03:45:00Z
@@ -33,6 +33,11 @@ files. The catalog's `identifierKinds` also generates the committed
 `src/generated/identifier-kinds.ts` vocabulary; runtime validation and the public
 `IdentifierKind` union consume that single generated list. A new identifier kind therefore
 requires an explicit server contract refresh. The live conformance suite compares `GET /v1/schemas` with the vendored catalog.
+
+The same refresh generates `src/generated/trait-schema.ts` from the governed identify and
+identify_once declarations. Runtime helper validation and default operation versions consume
+that map. Generation fails if the two operations disagree on trait types or required numeric
+constraints; hand-maintained trait vocabularies would permit validation drift.
 
 ## Alternatives considered
 

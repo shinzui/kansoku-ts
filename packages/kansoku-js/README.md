@@ -33,7 +33,14 @@ data: use `beforeSend` to redact them.
 
 ## Identity and experiments
 
-`identify(userId, traits?)` persists the user ID and sends traits as event properties.
+`identify(userId, traits?, options?)` persists the user ID and sends governed set traits with
+explicit schema version 2. `identifyOnce(userId, traits?, options?)` does the same with set-once
+version 1. Both preserve the anonymous ID for server stitching. Governed string traits are
+`plan`, `signup_source`, `initial_plan`, `country` and `role`; `company_size` is a finite,
+nonnegative integer. Omitted traits stay unchanged and null is rejected. Set-once initializes
+an unset value; a later set replaces it. An explicit `{ schemaVersion: 1 }` on identify retains
+identity-only behavior. Current traits can reclassify historical metrics and are public
+analytics observations, never access-control facts.
 `alias(previousId, newId, properties?)` links identities for one event and leaves the stored
 user unchanged. `group(organizationId, properties?)` persists the organisation for later
 events. `setIdentifiers({ device, fingerprint, email_hmac, email_sha256, cookie })` replaces optional
@@ -133,7 +140,8 @@ export interface KansokuOptions {
 
 export interface KansokuClient {
   page(properties?: JsonObject, options?: TrackOptions): void
-  identify(userId: string, traits?: JsonObject): void
+  identify(userId: string, traits?: JsonObject, options?: TrackOptions): void
+  identifyOnce(userId: string, traits?: JsonObject, options?: TrackOptions): void
   alias(previousId: string, newId: string, properties?: JsonObject): void
   group(organizationId: string, properties?: JsonObject): void
   experiment(

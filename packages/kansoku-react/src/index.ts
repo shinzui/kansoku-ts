@@ -10,6 +10,7 @@ export { useKansoku } from "./hooks/useKansoku.js"
 export { useTrack } from "./hooks/useTrack.js"
 export { usePageView } from "./hooks/usePageView.js"
 export { useIdentify } from "./hooks/useIdentify.js"
+export { useIdentifyOnce } from "./hooks/useIdentifyOnce.js"
 export { useExperiment } from "./hooks/useExperiment.js"
 export type {
   KansokuClient,

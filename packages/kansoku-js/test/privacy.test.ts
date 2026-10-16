@@ -43,3 +43,10 @@ test("DNT and GPC are honored only when requested", async () => {
     }
   }
 })
+
+test("suppressed identifyOnce reports a drop without changing active identity", () => {
+  const { client, drops } = fixture({ optOut: true })
+  client.identifyOnce("must-not-persist", { plan: "pro" })
+  expect(client.getUserId()).toBeUndefined()
+  expect(drops.at(-1)?.reason).toBe("opted_out")
+})

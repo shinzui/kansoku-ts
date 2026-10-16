@@ -144,7 +144,7 @@ test("activity contracts preserve closed window/cohort choices and common popula
 })
 
 test("catalog and source pin carry the governed contract", async () => {
-  expect(catalog.catalogVersion).toBe(3)
+  expect(catalog.catalogVersion).toBe(4)
   expect([...IDENTIFIER_KINDS] as string[]).toEqual(catalog.identifierKinds)
   expect(catalog.service).toBe("kansoku")
   expect(Object.keys(catalog.events)).toEqual([
@@ -153,6 +153,7 @@ test("catalog and source pin carry the governed contract", async () => {
     "feature_used",
     "group",
     "identify",
+    "identify_once",
     "page_leave",
     "page_view",
     "payment_completed",
@@ -243,4 +244,20 @@ test("metric consumers expose shared funnel controls and separate exposure diagn
     measure: "diagnostics",
   }
   expect(diagnostic.measure).toBe("diagnostics")
+})
+
+test("generated trait rules exactly match the pinned set/set-once catalog", async () => {
+  const { USER_TRAIT_TYPES, GOVERNED_TRAIT_VERSIONS } =
+    await import("../src/generated/trait-schema.js")
+  expect(GOVERNED_TRAIT_VERSIONS).toEqual({ identify: 2, identify_once: 1 })
+  const set = catalog.events.identify.versions.find((value) => value.version === 2)!
+  const once = catalog.events.identify_once.versions[0]!
+  expect(set.properties).toEqual(once.properties)
+  expect(Object.keys(USER_TRAIT_TYPES)).toEqual(set.properties.map((value) => value.name))
+  expect(set.properties.find((value) => value.name === "company_size")).toMatchObject({
+    type: "number",
+    minimum: 0,
+    multipleOf: 1,
+    required: false,
+  })
 })

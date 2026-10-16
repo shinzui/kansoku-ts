@@ -1,5 +1,9 @@
 # Bundle Update Log
 
+## 2026-10-16
+
+- **Update**: Record generated governed trait validation and versioned identify/set-once lifecycle decisions.
+
 ## 2026-10-15
 
 - **Update**: Generate identifier validation vocabulary and public union from the pinned server catalog.

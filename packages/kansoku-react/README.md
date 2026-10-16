@@ -34,6 +34,10 @@ mode. It constructs without capture, starts from an effect, stops on cleanup and
 
 `useKansoku()` returns the client for `flush()`, `reset()`, `group()` and other methods.
 It throws if called without a provider in the browser; server rendering returns a no-op client.
+`useIdentifyOnce(userId, traits?)` follows the same user/client lifecycle as `useIdentify`,
+emitting explicit identify_once v1. It suppresses duplicate StrictMode effect setup; set-once
+is a server trait operation. A later identify v2 may replace the initialized value.
+
 `useTrack()` returns a stable tracking callback. `useIdentify(userId, traits?)` identifies on
 ID changes, ignoring traits object identity. An undefined user does not reset identity:
 call `useKansoku().reset()` explicitly on logout. `useExperiment(name, variant, properties?)`

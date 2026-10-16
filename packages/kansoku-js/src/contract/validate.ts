@@ -1,3 +1,4 @@
+import { GOVERNED_TRAIT_VERSIONS, USER_TRAIT_TYPES } from "../generated/trait-schema.js"
 import {
   EXPERIMENT_NAME_PATTERN,
   IDENTIFIER_KINDS,
@@ -46,10 +47,44 @@ export function validateEvent(event: AnalyticsEvent): string[] {
   )
     errors.push("schemaVersion must be an integer in 1..65535")
   if (event.identifiers !== undefined) errors.push(...validateIdentifiers(event.identifiers))
+  errors.push(...validateGovernedTraits(event))
   try {
     JSON.stringify(event)
   } catch {
     errors.push("event must be serializable JSON")
+  }
+  return errors
+}
+
+export function validateGovernedTraits(
+  event: Pick<AnalyticsEvent, "eventName" | "schemaVersion" | "userId" | "properties">,
+): string[] {
+  const errors: string[] = []
+  if (event.eventName === "identify" || event.eventName === "identify_once") {
+    const version = event.schemaVersion ?? 1
+    const governed = GOVERNED_TRAIT_VERSIONS[event.eventName]
+    if (version !== governed && !(event.eventName === "identify" && version === 1))
+      errors.push("unknown identity schema version")
+    if (version === governed) {
+      if (typeof event.userId !== "string" || !event.userId.length)
+        errors.push("governed trait operations require userId")
+      if (isPlainObject(event.properties)) {
+        for (const [name, type] of Object.entries(USER_TRAIT_TYPES)) {
+          if (!Object.prototype.hasOwnProperty.call(event.properties, name)) continue
+          const value = event.properties[name]
+          if (value === undefined) continue
+          if (
+            type === "string"
+              ? typeof value !== "string"
+              : typeof value !== "number" ||
+                !Number.isFinite(value) ||
+                !Number.isInteger(value) ||
+                value < 0
+          )
+            errors.push(`invalid governed trait: ${name}`)
+        }
+      }
+    }
   }
   return errors
 }

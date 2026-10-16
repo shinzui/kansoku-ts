@@ -35,6 +35,7 @@ export function createNoopClient(): KansokuClient {
     track: noop,
     page: noop,
     identify: noop,
+    identifyOnce: noop,
     alias: noop,
     group: noop,
     experiment: noop,

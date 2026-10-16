@@ -17,7 +17,7 @@ test("identify, alias and group match the server helper shapes", async () => {
     userId: "user",
     properties: { plan: "pro" },
   })
-  expect(events()[0]).not.toHaveProperty("schemaVersion")
+  expect(events()[0]!.schemaVersion).toBe(2)
   expect(events()[1]).toMatchObject({
     eventName: "alias",
     anonymousId: "old-anon",
@@ -70,4 +70,35 @@ test("identity and group persist under the configured keys", () => {
   expect(localStorage.getItem(`${prefix}.organization_id`)).toBe("organization")
   client.reset()
   expect(localStorage.getItem(`${prefix}.user_id`)).toBeNull()
+})
+
+test("governed helpers set identity, select versions, preserve overrides and reject invalid traits before mutation", async () => {
+  const { client, events, drops } = fixture()
+  const anonymous = client.getAnonymousId()
+  client.identifyOnce("user", { plan: "initial", company_size: 2 })
+  expect(client.getUserId()).toBe("user")
+  client.identify("invalid-user", { company_size: 1.5 })
+  client.identifyOnce("invalid-user", { plan: null })
+  expect(client.getUserId()).toBe("user")
+  client.identify("user", { plan: "pro" })
+  client.identify("legacy", { plan: null }, { schemaVersion: 1 })
+  client.identifyOnce("invalid-version", {}, { schemaVersion: 2 })
+  client.track("after")
+  await client.flush()
+  expect(events().map((event) => [event.eventName, event.schemaVersion])).toEqual([
+    ["identify_once", 1],
+    ["identify", 2],
+    ["identify", 1],
+    ["after", undefined],
+  ])
+  expect(events()[0]).toMatchObject({ anonymousId: anonymous, userId: "user" })
+  expect(events().at(-1)!.userId).toBe("legacy")
+  expect(drops).toHaveLength(3)
+})
+
+test("explicit configured legacy identify version remains visible", async () => {
+  const { client, events } = fixture({ schemaVersions: { identify: 1 } })
+  client.identify("legacy", { plan: null })
+  await client.flush()
+  expect(events()[0]).toMatchObject({ eventName: "identify", schemaVersion: 1 })
 })

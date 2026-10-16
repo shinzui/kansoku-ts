@@ -68,7 +68,8 @@ export interface KansokuStats {
 }
 export interface KansokuClient {
   page(properties?: JsonObject, options?: TrackOptions): void
-  identify(userId: string, traits?: JsonObject): void
+  identify(userId: string, traits?: JsonObject, options?: TrackOptions): void
+  identifyOnce(userId: string, traits?: JsonObject, options?: TrackOptions): void
   alias(previousId: string, newId: string, properties?: JsonObject): void
   group(organizationId: string, properties?: JsonObject): void
   experiment(

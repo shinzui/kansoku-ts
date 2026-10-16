@@ -1,6 +1,6 @@
 import type { InternalClient } from "./client.js"
-import { validateIdentifiers } from "./contract/validate.js"
-import type { IdentifierKind, JsonObject } from "./types.js"
+import { validateGovernedTraits, validateIdentifiers } from "./contract/validate.js"
+import type { IdentifierKind, JsonObject, TrackOptions } from "./types.js"
 
 export function createIdentityApi(client: InternalClient) {
   function blocked(name: string, properties?: JsonObject): boolean {
@@ -9,15 +9,36 @@ export function createIdentityApi(client: InternalClient) {
     return true
   }
   const validId = (value: unknown) => typeof value === "string" && value.length > 0
+  function identify(
+    name: "identify" | "identify_once",
+    userId: string,
+    traits?: JsonObject,
+    options?: TrackOptions,
+  ) {
+    if (blocked(name, traits)) return
+    if (!validId(userId)) {
+      client.drop("invalid", [], "userId must not be empty")
+      return
+    }
+    const errors = validateGovernedTraits({
+      eventName: name,
+      schemaVersion: options?.schemaVersion ?? client.config.schemaVersions[name],
+      userId,
+      properties: traits ?? {},
+    })
+    if (errors.length) {
+      client.drop("invalid", [], errors.join("; "))
+      return
+    }
+    client.identity.setUserId(userId)
+    client.enqueueBuilt(client.buildEvent(name, traits, options))
+  }
   return {
-    identify(userId: string, traits?: JsonObject) {
-      if (blocked("identify", traits)) return
-      if (!validId(userId)) {
-        client.drop("invalid", [], "userId must not be empty")
-        return
-      }
-      client.identity.setUserId(userId)
-      client.enqueueBuilt(client.buildEvent("identify", traits))
+    identify(userId: string, traits?: JsonObject, options?: TrackOptions) {
+      identify("identify", userId, traits, options)
+    },
+    identifyOnce(userId: string, traits?: JsonObject, options?: TrackOptions) {
+      identify("identify_once", userId, traits, options)
     },
     alias(previousId: string, newId: string, properties?: JsonObject) {
       if (blocked("alias", properties)) return

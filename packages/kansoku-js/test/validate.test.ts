@@ -49,3 +49,19 @@ test("enforces the closed identity vocabulary and printable non-space ASCII", ()
   expect(validateExperimentName("checkout_copy:b-1")).toBe(true)
   expect(validateExperimentName("Checkout Copy")).toBe(false)
 })
+
+test("governed traits validate exact versions, presence and scalar types while v1 stays identity-only", () => {
+  const base = { ...valid(), eventName: "identify", schemaVersion: 2, userId: "user" }
+  expect(validateEvent({ ...base, properties: { plan: "", company_size: 0 } })).toEqual([])
+  expect(validateEvent({ ...base, properties: { unknown: { arbitrary: true } } })).toEqual([])
+  for (const company_size of [null, -1, 1.5, NaN, Infinity, "2"])
+    expect(validateEvent({ ...base, properties: { company_size } }).length).toBeGreaterThan(0)
+  for (const plan of [null, 2, false, []])
+    expect(validateEvent({ ...base, properties: { plan } }).length).toBeGreaterThan(0)
+  expect(validateEvent({ ...base, userId: undefined }).length).toBeGreaterThan(0)
+  expect(validateEvent({ ...base, schemaVersion: 1, properties: { plan: null } })).toEqual([])
+  expect(validateEvent({ ...base, eventName: "identify_once", schemaVersion: 1 })).toEqual([])
+  expect(
+    validateEvent({ ...base, eventName: "identify_once", schemaVersion: 2 }).length,
+  ).toBeGreaterThan(0)
+})

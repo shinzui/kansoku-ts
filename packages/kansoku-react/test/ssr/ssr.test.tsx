@@ -7,6 +7,7 @@ import {
   KansokuProvider,
   useExperiment,
   useIdentify,
+  useIdentifyOnce,
   useKansoku,
   usePageView,
   useTrack,
@@ -20,6 +21,7 @@ describe.skipIf(typeof window !== "undefined")("server rendering", () => {
       useTrack()("server-render")
       usePageView("server")
       useIdentify("user")
+      useIdentifyOnce("user", { initial_plan: "free" })
       useExperiment("exp", "a")
       expect(client.isOptedOut()).toBe(true)
       return <span>server rendered</span>

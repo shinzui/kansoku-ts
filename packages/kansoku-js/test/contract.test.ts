@@ -198,3 +198,49 @@ test("built-in pinned events satisfy catalog requirements", () => {
     }
   }
 })
+
+type FunnelQuery = paths["/metrics/funnel"]["get"]["parameters"]["query"]
+type ExperimentFunnelQuery = paths["/metrics/experiments/funnel"]["get"]["parameters"]["query"]
+type ExperimentQuery = paths["/metrics/experiments"]["get"]["parameters"]["query"]
+const funnelMode: Equal<FunnelQuery["mode"], "sequential" | "strict" | undefined> = true
+const funnelMeasure: Equal<FunnelQuery["measure"], "count" | "time_to_convert" | undefined> = true
+const funnelExclusions: Equal<FunnelQuery["exclude"], string[] | undefined> = true
+const experimentFunnelMode: Equal<ExperimentFunnelQuery["mode"], FunnelQuery["mode"]> = true
+const experimentFunnelMeasure: Equal<ExperimentFunnelQuery["measure"], FunnelQuery["measure"]> =
+  true
+const experimentFunnelExclusions: Equal<ExperimentFunnelQuery["exclude"], FunnelQuery["exclude"]> =
+  true
+const experimentDiagnostics: Equal<
+  ExperimentQuery["measure"],
+  "exposures" | "diagnostics" | undefined
+> = true
+
+test("metric consumers expose shared funnel controls and separate exposure diagnostics", () => {
+  expect([
+    funnelMode,
+    funnelMeasure,
+    funnelExclusions,
+    experimentFunnelMode,
+    experimentFunnelMeasure,
+    experimentFunnelExclusions,
+    experimentDiagnostics,
+  ]).toEqual([true, true, true, true, true, true, true])
+  const query: ExperimentFunnelQuery = {
+    experiment: "checkout_copy",
+    from: "2026-07-01",
+    to: "2026-07-02",
+    steps: "checkout_started,payment_completed",
+    mode: "strict",
+    measure: "time_to_convert",
+    exclude: ["checkout_cancelled", "checkout_reset"],
+    groupBy: "source_service,country_code",
+  }
+  expect(query.exclude).toHaveLength(2)
+  const diagnostic: ExperimentQuery = {
+    from: "2026-07-01",
+    to: "2026-07-02",
+    experiment: "checkout_copy",
+    measure: "diagnostics",
+  }
+  expect(diagnostic.measure).toBe("diagnostics")
+})

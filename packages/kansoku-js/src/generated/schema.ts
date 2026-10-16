@@ -28,7 +28,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
+        /** @description Exact ordered signup conversion: starters are the denominator; only starters with a later signup_completed in the millisecond/event-ID timeline within range (window capped at 90 days) convert. Zero denominator returns zero; ratio stays 0..1. Group ownership is the earliest eligible start. timeGrain and prop grouping are rejected.Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields or prop:<declared scalar property>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix. */
         get: operations["getMetricsConversion"];
         put?: never;
         post?: never;
@@ -79,7 +79,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. Unique users exposed per experiment and variant, from the experiment_exposures rollup. Counts raw identities (user_id, else anonymous_id) with a uniqCombined sketch (~0.8% error at scale; exact for small sets); identity-stitched exact numbers are served by the conversion and funnel endpoints. timeGrain: day, week, or month (hour is rejected; the rollup is daily); omitted = one bucket for the whole range. Re-exposures never double-count. */
+        /** @description measure=exposures (default) returns daily-rollup uniqCombined raw-identity exposure counts (~0.8% sketch error at scale); it differs from exact stitched users. measure=diagnostics uses exact canonical subjects and valid experiment/variant exposures, assigning each user once per experiment/requested bucket to earliest occurred_at,event_id. group.measure emits exposed_users, multiple_exposure (>1 observed variant), assigned_users and variant_share; per-variant shares sum to one when nonempty. Repeated exposures do not increase assignment. Zero users emit zero totals and no variant rows; missing/invalid names are excluded. All observed variants remain visible, including zero assignments. Day/week/month or whole range; hour rejected. First observed exposure is not an authoritative randomization log; contamination invalidates naive sample-ratio interpretation. Positive half-open range at most 366 days; at most 10000 complete points and bounded native work. */
         get: operations["getMetricsExperiments"];
         put?: never;
         post?: never;
@@ -113,7 +113,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. Ordered funnel per variant of one experiment. At most 20 non-empty ordered steps are supported, including repeated names. Users counted at step N performed steps 1..N in order, all at or after their first exposure to the experiment, within `window` seconds of the chain's first step (default: the full from/to range, capped at 90 days). Steps before first exposure do not count. */
+        /** @description Canonical user timelines ordered by millisecond occurred_at then event_id, with immutable duplicates removed. At most 20 ordered steps; one event cannot satisfy repeated steps. mode=sequential (default) allows intervening events; strict requires adjacency including automatic events and rejects event filters. Consider every start; select maximum reach, earliest completion, earliest start, then event IDs. window is inclusive seconds from first step, default range capped at 7776000. Repeat exclude up to 20 distinct validated names; exclusions between matched steps stop a chain, and cannot overlap steps. measure=count (default) emits cumulative reach. time_to_convert emits exact nearest-rank p50_seconds/p90_seconds for reached steps >=2, from the same selected chain. One/two group dimensions use the earliest eligible first-step event even when a later attempt wins; prop dimensions require only its schema. Sequential event filters select step rows and cannot hide exclusions. Positive half-open range at most 366 days; native execution/memory limits; at most 10000 complete points or HTTP 400. Per-variant timelines include only events at or after that user/variant first exposure inside the range. Multi-variant users remain in each variant. */
         get: operations["getMetricsExperimentsFunnel"];
         put?: never;
         post?: never;
@@ -147,7 +147,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every implemented metric requires a positive half-open from/to range of at most 366 days and returns a complete answer of at most 10000 points, or a permanent HTTP 400 problem asking the caller to narrow the query. At most 20 non-empty ordered steps are supported, including repeated names. Users counted at step N performed steps 1..N in order within `window` seconds of the chain's first step. Default window: the full from/to range, capped at 90 days (7776000 s). */
+        /** @description Canonical user timelines ordered by millisecond occurred_at then event_id, with immutable duplicates removed. At most 20 ordered steps; one event cannot satisfy repeated steps. mode=sequential (default) allows intervening events; strict requires adjacency including automatic events and rejects event filters. Consider every start; select maximum reach, earliest completion, earliest start, then event IDs. window is inclusive seconds from first step, default range capped at 7776000. Repeat exclude up to 20 distinct validated names; exclusions between matched steps stop a chain, and cannot overlap steps. measure=count (default) emits cumulative reach. time_to_convert emits exact nearest-rank p50_seconds/p90_seconds for reached steps >=2, from the same selected chain. One/two group dimensions use the earliest eligible first-step event even when a later attempt wins; prop dimensions require only its schema. Sequential event filters select step rows and cannot hide exclusions. Positive half-open range at most 366 days; native execution/memory limits; at most 10000 complete points or HTTP 400. */
         get: operations["getMetricsFunnel"];
         put?: never;
         post?: never;
@@ -961,6 +961,7 @@ export interface operations {
                 to: string;
                 experiment?: string;
                 timeGrain?: "hour" | "day" | "week" | "month";
+                measure?: "exposures" | "diagnostics";
             };
             header?: never;
             path?: never;
@@ -978,7 +979,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `timeGrain` or `experiment` or `to` or `from` */
+            /** @description Malformed request or `measure` or `timeGrain` or `experiment` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1202,6 +1203,11 @@ export interface operations {
                 from: string;
                 to: string;
                 window?: number;
+                mode?: "sequential" | "strict";
+                measure?: "count" | "time_to_convert";
+                exclude?: string[];
+                groupBy?: string;
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -1219,7 +1225,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `window` or `to` or `from` or `steps` or `experiment` */
+            /** @description Malformed request or `filter` or `groupBy` or `exclude` or `measure` or `mode` or `window` or `to` or `from` or `steps` or `experiment` */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1443,6 +1449,11 @@ export interface operations {
                 to: string;
                 steps: string;
                 window?: number;
+                mode?: "sequential" | "strict";
+                measure?: "count" | "time_to_convert";
+                exclude?: string[];
+                groupBy?: string;
+                filter?: string[];
             };
             header?: never;
             path?: never;
@@ -1460,7 +1471,7 @@ export interface operations {
                     "application/json;charset=utf-8": components["schemas"]["MetricResult"];
                 };
             };
-            /** @description Malformed request or `window` or `steps` or `to` or `from` */
+            /** @description Malformed request or `filter` or `groupBy` or `exclude` or `measure` or `mode` or `window` or `steps` or `to` or `from` */
             400: {
                 headers: {
                     [name: string]: unknown;

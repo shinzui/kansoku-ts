@@ -1,3 +1,4 @@
+import { isBot } from "./bot.js"
 import { collectContext, isDoNotTrackEnabled, isGlobalPrivacyControlEnabled } from "./context.js"
 import { BUILT_IN_SCHEMA_VERSIONS, SESSION_START } from "./contract/events.js"
 import { validateEvent } from "./contract/validate.js"
@@ -5,6 +6,7 @@ import type { AnalyticsEvent, JsonObject } from "./contract/wire.js"
 import { buildEvent, randomId } from "./envelope.js"
 import type { WebFields } from "./envelope.js"
 import { recordExposure } from "./experiment.js"
+import { consumeHandoff, linkTo } from "./handoff.js"
 import { createIdentityApi } from "./identity-api.js"
 import { createIdentity } from "./identity.js"
 import { attachExitFlush } from "./lifecycle.js"
@@ -32,10 +34,27 @@ export function resolveOptions(options: KansokuOptions): ResolvedKansokuOptions 
   if (!["http:", "https:"].includes(url.protocol))
     throw new TypeError("baseUrl must be HTTP or HTTPS")
   if (!options.writeKey) throw new TypeError("writeKey must not be empty")
+  if (options.crossOriginLink && !Array.isArray(options.crossOriginLink.allowedOrigins))
+    throw new TypeError("crossOriginLink requires explicit allowedOrigins")
+  const allowedOrigins = (options.crossOriginLink?.allowedOrigins ?? []).map((value) => {
+    const target = new URL(value)
+    if (
+      !["http:", "https:"].includes(target.protocol) ||
+      target.pathname !== "/" ||
+      target.search ||
+      target.hash ||
+      target.username ||
+      target.password ||
+      target.hostname.includes("*")
+    )
+      throw new TypeError("handoff destinations must be exact HTTP(S) origins")
+    return target.origin
+  })
   const config: ResolvedKansokuOptions = Object.freeze({
     sourceService: "",
     autoStart: true,
     exitTransport: "keepalive",
+    botDetection: "flag",
     flushAt: 20,
     flushIntervalMs: 5000,
     maxQueueSize: 1000,
@@ -60,6 +79,10 @@ export function resolveOptions(options: KansokuOptions): ResolvedKansokuOptions 
       setTimeout: globalThis.setTimeout.bind(globalThis),
       clearTimeout: globalThis.clearTimeout.bind(globalThis),
     },
+    crossOriginLink: Object.freeze({
+      accept: options.crossOriginLink?.accept ?? false,
+      allowedOrigins: Object.freeze(allowedOrigins),
+    }),
     autocapture: Object.freeze({
       pageViews: true,
       sessions: true,
@@ -92,12 +115,14 @@ export function resolveOptions(options: KansokuOptions): ResolvedKansokuOptions 
     throw new TypeError("retry limits must be nonnegative")
   if (!["keepalive", "beacon"].includes(config.exitTransport))
     throw new TypeError("invalid exitTransport")
+  if (!["flag", "drop", "off"].includes(config.botDetection))
+    throw new TypeError("invalid botDetection")
   return config
 }
 
 export function createInternalClient(options: KansokuOptions, deferStart = false) {
   const config = resolveOptions(options)
-  const storage = resolveStorage(config.storage, config.cookieDomain)
+  const storage = resolveStorage(config.storage, config.cookieDomain, config.debug)
   const mirror = sessionStorageAdapter()
   const queueKey = `${config.storageKeyPrefix}.queue`
   const optKey = `${config.storageKeyPrefix}.opt_out`
@@ -138,7 +163,17 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
     }
     if (config.debug) console.debug(`kansoku-js: ${reason}`, detail ?? "", events.length)
   }
-  const suppressed = () => optedOut || terminal || closing || suppression()
+  function sharedOptOut() {
+    const shared = storage.get(optKey) === "true"
+    if (shared && !optedOut) {
+      optedOut = true
+      const pending = remove(queue.toJSON())
+      if (pending.length) drop("opted_out", pending)
+    }
+    optedOut = shared
+    return optedOut
+  }
+  const suppressed = () => sharedOptOut() || terminal || closing || suppression()
   function currentSession() {
     const current = session.current(config.now())
     if (current.started) pendingSession = current.id
@@ -171,6 +206,16 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
     if (suppressed()) {
       drop("opted_out", [event], terminal || closing ? "shutdown" : undefined)
       return false
+    }
+    if (config.botDetection !== "off") {
+      const agent =
+        event.context.userAgent ?? (typeof navigator === "undefined" ? "" : navigator.userAgent)
+      const bot = event.context.bot === true || isBot(typeof agent === "string" ? agent : "")
+      if (bot && config.botDetection === "drop") {
+        drop("bot", [event])
+        return false
+      }
+      event = { ...event, context: { ...event.context, bot } }
     }
     let errors = validateEvent(event)
     if (errors.length) {
@@ -230,7 +275,7 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
   ): Promise<void> {
     for (let attempt = 0; ; attempt++) {
       const active = new Set(queue.toJSON().map((event) => event.eventId))
-      if (optedOut || !batch.some((event) => active.has(event.eventId))) return
+      if (sharedOptOut() || !batch.some((event) => active.has(event.eventId))) return
       const outcome = await sendBatch(config, batch, {
         keepalive,
         ...(serialized ? { serialized } : {}),
@@ -280,7 +325,7 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
     // Defer the loop by one microtask so even synchronous injected transports share one promise.
     inFlight = Promise.resolve()
       .then(async () => {
-        while (queue.size && !optedOut)
+        while (queue.size && !sharedOptOut())
           await deliver(queue.peekBatch(config.maxBatchEvents, config.maxBatchBytes))
       })
       .finally(() => {
@@ -417,7 +462,7 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
       optedOut = false
       storage.remove(optKey)
     },
-    isOptedOut: () => optedOut,
+    isOptedOut: sharedOptOut,
     getAnonymousId: () => identity.snapshot().anonymousId,
     getUserId: () => identity.snapshot().userId,
     getSessionId: currentSession,
@@ -438,6 +483,7 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
     },
     drop,
     isSuppressed: suppressed,
+    isStarted: () => started && !terminal && !closing,
     setSuppression(check: () => boolean) {
       suppression = check
     },
@@ -470,7 +516,11 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
   const leavePage = () => {
     if (!pageSnapshot || pageSnapshot.left || core.config.autocapture.pageLeave === false) return
     pageSnapshot.left = true
-    if (core.isSuppressed()) return
+    if (
+      core.isSuppressed() ||
+      core.identity.snapshot().anonymousId !== pageSnapshot.event.anonymousId
+    )
+      return
     const original = pageSnapshot.event
     core.enqueueBuilt({
       ...original,
@@ -487,8 +537,16 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
     })
   }
   core.onExit(leavePage)
+  let handoffRead = false
+  core.onStart(() => {
+    if (!handoffRead) {
+      handoffRead = true
+      consumeHandoff(core)
+    }
+  })
   const optOut = core.optOut
   const client: KansokuClient = Object.assign(core, createIdentityApi(core), {
+    linkTo: (url: string | URL) => linkTo(core, url),
     optOut() {
       pageSnapshot = undefined
       optOut()

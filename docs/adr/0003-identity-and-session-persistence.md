@@ -5,7 +5,7 @@ description: Share browser identity through an adapter while keeping the pending
 docId: ADR-3
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-16T01:36:00Z
+timestamp: 2026-10-16T04:26:26Z
 generated:
   by: process:codex
   at: 2026-10-15T04:05:00Z
@@ -62,3 +62,21 @@ Fingerprinting to derive anonymous IDs would add data collection without a consu
 
 Same-tab reloads can retry unanswered deliveries. Closing a tab loses its queue when exit
 delivery fails. Custom storage adapters must implement the get, set and remove contract.
+
+## Shared origins and explicit handoff
+
+Before capture, identity snapshots reread the selected adapter. A successful persistent read
+that returns missing never resurrects an old memory fallback value. Cookie adapters verify
+persistence and use only memory on failure, with redacted debug output. Already-open siblings
+therefore observe completed shared reset/logout and opt-out changes. A newly observed opt-out
+drops that tab's pending queue; historical queued attribution is otherwise immutable. Page
+snapshots with a rotated anonymous identity are retired rather than emitted as a former user.
+
+Parent-domain cookies are recommended for sibling subdomains with one prefix/account.
+Producer session IDs can be shared, but server sessions remain source-service scoped. Explicit
+linkTo handoff decorates exact allowlisted HTTP(S) destinations only after start and privacy
+admission. Startup acceptance defaults false and strips the parameter before attribution even
+when ignored. Fresh identities adopt; existing logged-out identities merge a cookie signal
+without overwriting a different cookie or other signals. Authenticated recipients never attach
+an incoming unsolicited identity. Exactly one bounded identifier is accepted. This is replayable
+analytics evidence, not authentication; initial URL/referrer/log exposure precedes stripping.

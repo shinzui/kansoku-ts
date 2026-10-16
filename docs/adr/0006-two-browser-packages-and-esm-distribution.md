@@ -5,7 +5,7 @@ description: Publish a dependency-free browser SDK and a thin React binding as o
 docId: ADR-6
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-15T04:18:00Z
+timestamp: 2026-10-16T04:26:26Z
 generated:
   by: process:codex
   at: 2026-10-15T04:18:00Z
@@ -27,7 +27,7 @@ the browser client. Both packages have no runtime dependencies; React and kansok
 peers of the binding. Exclude metrics clients, replay, click/form capture, flag evaluation,
 Node producers and other framework bindings from this initiative.
 
-Publish one ESM bundle and declaration set, with types and default export conditions.
+Build one minified ESM bundle with a linked source map and declaration set, with types and default export conditions.
 Use explicit .js relative imports in declarations. Declare Node >=20.19.0 for require(esm)
 support; Node 22 consumers need 22.12 or later. Keep the React use-client banner first.
 Check packed declarations with publint and attw's esm-only profile. Enforce gzip budgets
@@ -44,3 +44,8 @@ Bundling framework peers risks multiple copies of React in applications.
 A future runtime can extract pure modules after a real need appears. Browser imports are
 small and tree-shakeable. Jest in its default CommonJS mode needs ESM transforms; Node's
 native require(esm) path is the supported CommonJS consumption strategy.
+
+Production distribution uses Bun minification while preserving declarations, ESM exports,
+linked debugging maps and the React use-client banner. The existing size budgets remain
+unchanged as transport, bot and handoff features are added. Package/SSR/type checks validate
+the built artifact. A local build does not claim a registry publication.

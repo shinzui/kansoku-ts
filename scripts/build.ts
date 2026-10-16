@@ -14,7 +14,7 @@ const result = await Bun.build({
   format: "esm",
   naming: "index.js",
   sourcemap: "linked",
-  minify: false,
+  minify: true,
   external,
   banner,
 })

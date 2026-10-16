@@ -27,7 +27,7 @@ function browserStorage(kind: "localStorage" | "sessionStorage"): StorageAdapter
   return {
     get(key) {
       try {
-        return storage?.getItem(key) ?? fallback.get(key)
+        return storage ? storage.getItem(key) : fallback.get(key)
       } catch {
         return fallback.get(key)
       }
@@ -52,47 +52,79 @@ function browserStorage(kind: "localStorage" | "sessionStorage"): StorageAdapter
 }
 export const localStorageAdapter = (): StorageAdapter => browserStorage("localStorage")
 export const sessionStorageAdapter = (): StorageAdapter => browserStorage("sessionStorage")
-export function cookieStorage({ domain }: { domain?: string } = {}): StorageAdapter {
+export function cookieStorage({
+  domain,
+  debug = false,
+}: { domain?: string; debug?: boolean } = {}): StorageAdapter {
   const fallback = memoryStorage()
-  function write(key: string, value: string, maxAge: number) {
-    try {
-      if (typeof document !== "undefined")
-        document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; Path=/; SameSite=Lax; Max-Age=${maxAge}; Expires=${new Date(maxAge === 0 ? 0 : Date.now() + maxAge * 1000).toUTCString()}${domain ? `; Domain=${domain}` : ""}${typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : ""}`
-    } catch {
-      /* Storage is optional. */
-    }
+  const read = (key: string): string | null => {
+    const prefix = `${encodeURIComponent(key)}=`
+    const cookie =
+      typeof document === "undefined"
+        ? undefined
+        : document.cookie
+            .split(";")
+            .map((value) => value.trim())
+            .find((value) => value.startsWith(prefix))
+    return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null
   }
+  function write(key: string, value: string, maxAge: number) {
+    if (typeof document !== "undefined")
+      document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; Path=/; SameSite=Lax; Max-Age=${maxAge}; Expires=${new Date(maxAge === 0 ? 0 : Date.now() + maxAge * 1000).toUTCString()}${domain ? `; Domain=${domain}` : ""}${typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : ""}`
+  }
+  let persistent = false
+  try {
+    const probe = `kansoku.probe.${Math.random()}`
+    write(probe, "1", 60)
+    persistent = read(probe) === "1"
+    write(probe, "", 0)
+  } catch {
+    /* Failed cookies never expand to another persistent adapter. */
+  }
+  if (!persistent && debug)
+    console.debug("kansoku-js: cookie persistence unavailable; using memory")
   return {
     get(key) {
-      try {
-        const prefix = `${encodeURIComponent(key)}=`
-        const cookie =
-          typeof document === "undefined"
-            ? undefined
-            : document.cookie
-                .split(";")
-                .map((v) => v.trim())
-                .find((v) => v.startsWith(prefix))
-        if (cookie) return decodeURIComponent(cookie.slice(prefix.length))
-      } catch {
-        /* Fall back to memory. */
+      if (persistent) {
+        try {
+          return read(key)
+        } catch {
+          persistent = false
+        }
       }
       return fallback.get(key)
     },
     set(key, value) {
       fallback.set(key, value)
-      write(key, value, 400 * 86400)
+      if (persistent) {
+        try {
+          write(key, value, 400 * 86400)
+          if (read(key) !== value) persistent = false
+        } catch {
+          persistent = false
+        }
+      }
     },
     remove(key) {
       fallback.remove(key)
-      write(key, "", 0)
+      if (persistent) {
+        try {
+          write(key, "", 0)
+        } catch {
+          persistent = false
+        }
+      }
     },
   }
 }
-export function resolveStorage(option: KansokuOptions["storage"], domain?: string): StorageAdapter {
+export function resolveStorage(
+  option: KansokuOptions["storage"],
+  domain?: string,
+  debug = false,
+): StorageAdapter {
   if (typeof option === "object") return option
   if (option === "memory") return memoryStorage()
-  if (option === "cookie") return cookieStorage({ domain })
+  if (option === "cookie") return cookieStorage({ domain, debug })
   return localStorageAdapter()
 }
 export function readJSON(storage: StorageAdapter, key: string): unknown {

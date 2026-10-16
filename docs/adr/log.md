@@ -2,6 +2,7 @@
 
 ## 2026-10-16
 
+- **Update**: Record shared identity refresh, opt-in handoff, synthetic bot modes and minified distribution within the existing package budgets.
 - **Update**: Update accepted transport and capture decisions for body-key beacon and original-page lifecycle semantics.
 - **Update**: Record transport-clock stamping, shared document beacon reservations, queued-versus-acknowledged counters and page snapshot lifecycle.
 - **Update**: Record generated governed trait validation and versioned identify/set-once lifecycle decisions.

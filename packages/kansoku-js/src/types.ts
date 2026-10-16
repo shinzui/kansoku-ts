@@ -33,6 +33,8 @@ export interface KansokuOptions {
     pageLeave?: boolean
   }
   exitTransport?: "keepalive" | "beacon"
+  botDetection?: "flag" | "drop" | "off"
+  crossOriginLink?: { accept?: boolean; allowedOrigins: readonly string[] }
   optOut?: boolean
   respectDoNotTrack?: boolean
   respectGlobalPrivacyControl?: boolean
@@ -48,6 +50,7 @@ export type ResolvedKansokuOptions = Readonly<
     Pick<KansokuOptions, "beforeSend" | "onDrop" | "cookieDomain">
 >
 export type DropReason =
+  | "bot"
   | "queue_full"
   | "rejected"
   | "permanent_error"
@@ -73,6 +76,7 @@ export interface KansokuStats {
   dropped: number
 }
 export interface KansokuClient {
+  linkTo(url: string | URL): string
   page(properties?: JsonObject, options?: TrackOptions): void
   identify(userId: string, traits?: JsonObject, options?: TrackOptions): void
   identifyOnce(userId: string, traits?: JsonObject, options?: TrackOptions): void

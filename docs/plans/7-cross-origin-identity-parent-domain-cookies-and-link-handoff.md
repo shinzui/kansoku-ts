@@ -22,6 +22,11 @@ provenance:
       at: 2026-10-15T15:43:16Z
       mode: "update"
       note: "Reconcile first-release APIs, domain semantics, dependencies and acceptance with the source-validated MP-5 review."
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-10-16T04:10:19Z
+      mode: "implement"
+      note: "Implement shared-cookie refresh, opt-in destination-allowlisted handoff and real browser/server identity conformance as the EP-38 final release consumer."
 ---
 
 # Cross-origin identity: parent-domain cookies and link handoff
@@ -94,7 +99,11 @@ URL request before JavaScript can strip it.
 ## Outcomes & Retrospective
 
 
-(To be filled during and after implementation.)
+Source implementation passes 85 unit cases and two explicit no-DOM/SSR cases, including
+six handoff/shared-storage cases and the existing transport/trait regressions. Types pass.
+The minified JavaScript/React artifacts are 8565/1550 bytes gzip within the existing budgets.
+Cookie persistence checks, fresh shared-state reads and allowlisted startup handoff are
+implemented; real multi-origin Chromium and server funnel acceptance remain pending.
 
 
 ## Context and Orientation

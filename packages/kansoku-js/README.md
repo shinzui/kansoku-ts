@@ -33,6 +33,15 @@ version. `options.context` can override these values. No IP address, fingerprint
 location is collected by the SDK. URLs and caller-supplied properties may contain personal
 data: use `beforeSend` to redact them.
 
+The default `botDetection: "flag"` adds Boolean context.bot using a bounded synthetic v1
+matcher and preserves an existing true. `"drop"` reports bot drops through onDrop/statistics;
+`"off"` adds no client flag. Privacy gates run first. The server independently classifies its
+request user agent, so client off does not turn off server bot handling.
+
+See [one account across several properties](../../docs/guides/cross-origin-identity.md) for
+parent-domain cookies, open-tab reset/opt-out synchronization and explicit allowlisted linkTo
+handoff. Cross-site handoff acceptance is opt-in; it is not authentication.
+
 ## Identity and experiments
 
 `identify(userId, traits?, options?)` persists the user ID and sends governed set traits with
@@ -66,7 +75,7 @@ and opt-out silently skip automatic capture; explicit calls report `opted_out` d
 
 `track(name, properties?, options?)` queues an event with anonymous and session IDs.
 `flush()` waits for pending batches. `stats` reports queued, accepted, bestEffortQueued, rejected and dropped
-counts. `onDrop(info)` receives `queue_full`, `rejected`, `permanent_error`,
+counts. `onDrop(info)` receives `bot`, `queue_full`, `rejected`, `permanent_error`,
 `retries_exhausted`, `before_send`, `opted_out` or `invalid` and the affected events.
 `beforeSend(event)` can redact fields or return `null` to drop an event.
 

@@ -5,7 +5,7 @@ description: Capture page views and session starts through the shared delivery e
 docId: ADR-4
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-16T03:47:34Z
+timestamp: 2026-10-16T04:26:26Z
 generated:
   by: process:codex
   at: 2026-10-15T04:05:00Z
@@ -60,3 +60,12 @@ view. Page leave is lifecycle telemetry rather than user engagement, and cannot 
 complete time measurement. `autocapture.pageLeave=false` disables it. Visibility and pagehide
 share one exit transition; a persisted BFCache pageshow starts a new view interval. Ordinary
 stop/start keeps the existing view and navigation dedupe key.
+
+## Bot hint policy
+
+Default botDetection=flag adds Boolean context.bot using a bounded handwritten synthetic v1
+matcher, preserving existing true. drop accounts for suppressed bot events through onDrop and
+dropped statistics; off adds no client flag. The ordinary opt-out/GPC/DNT gate precedes bot
+handling. This small matcher imports no third-party rule database and does not claim empirical
+accuracy; the server independently classifies the actual request UA. Client off cannot disable
+server bot classification.

@@ -10,6 +10,8 @@ export function createNoopClient(): KansokuClient {
     sourceService: "",
     autoStart: false,
     exitTransport: "keepalive",
+    botDetection: "off",
+    crossOriginLink: Object.freeze({ accept: false, allowedOrigins: [] }),
     flushAt: 20,
     flushIntervalMs: 5000,
     maxQueueSize: 1000,
@@ -33,6 +35,7 @@ export function createNoopClient(): KansokuClient {
     timers: { setTimeout, clearTimeout },
   })
   return {
+    linkTo: String,
     track: noop,
     page: noop,
     identify: noop,

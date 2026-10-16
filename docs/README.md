@@ -10,3 +10,5 @@
 
 The packages are being prepared for their first `0.1.0` release. Until publication,
 use the workspace examples, which import the built package exports.
+
+[Cross-origin identity and shared properties](guides/cross-origin-identity.md).

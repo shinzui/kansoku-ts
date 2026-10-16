@@ -67,3 +67,5 @@ catalog before relying on it. Override `KANSOKU_LIVE_MAX_BATCH_EVENTS` if the se
 batch cap differs from its default 500.
 
 [Documentation index](../README.md)
+
+[Cross-origin identity and shared properties](cross-origin-identity.md).

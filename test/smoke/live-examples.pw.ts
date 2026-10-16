@@ -1,8 +1,17 @@
 import { expect, test } from "@playwright/test"
 import type { APIRequestContext } from "@playwright/test"
 
+test.use({
+  userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36",
+})
+
 const baseUrl = process.env.KANSOKU_SMOKE_BASE_URL
 const serviceToken = process.env.KANSOKU_LIVE_SERVICE_TOKEN
+if (
+  process.env.KANSOKU_REQUIRE_LIVE === "1" &&
+  (!baseUrl || !serviceToken || !process.env.KANSOKU_SMOKE_WRITE_KEY)
+)
+  throw new Error("Required live examples need the real server and both credentials")
 test.skip(
   !baseUrl || !serviceToken,
   "Set KANSOKU_SMOKE_BASE_URL/WRITE_KEY and KANSOKU_LIVE_SERVICE_TOKEN for live example checks",

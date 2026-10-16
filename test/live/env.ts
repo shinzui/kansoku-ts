@@ -4,6 +4,8 @@ export const baseUrl = process.env.KANSOKU_LIVE_BASE_URL?.replace(/\/+$/, "") ??
 export const writeKey = process.env.KANSOKU_LIVE_WRITE_KEY ?? ""
 export const serviceToken = process.env.KANSOKU_LIVE_SERVICE_TOKEN
 export const live = Boolean(baseUrl && writeKey)
+if (process.env.KANSOKU_REQUIRE_LIVE === "1" && (!live || !serviceToken))
+  throw new Error("Required live conformance needs base URL, write key and service token")
 if (live && typeof window !== "undefined")
   throw new Error(
     "Live tests require KANSOKU_TEST_NO_DOM=1; happy-dom must not replace native fetch",

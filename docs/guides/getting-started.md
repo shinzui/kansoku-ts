@@ -62,7 +62,9 @@ curl --fail-with-body --get http://localhost:8080/metrics/page-views \
 The writer updates metrics asynchronously; retry after a few seconds if no points appear.
 Counts accumulate in the account. For isolated live conformance, set
 `KANSOKU_LIVE_BASE_URL`, `KANSOKU_LIVE_WRITE_KEY` and optionally
-`KANSOKU_LIVE_SERVICE_TOKEN`, then run `just test-live`. The suite checks the pinned schema
+`KANSOKU_LIVE_SERVICE_TOKEN`, then run `just test-live`. For required release conformance,
+supply all three and run `KANSOKU_REQUIRE_LIVE=1 just test-live`: missing credentials, failing
+routes and feature mismatches must fail, with zero skipped cases. The suite checks the pinned schema
 catalog before relying on it. Override `KANSOKU_LIVE_MAX_BATCH_EVENTS` if the server's ingest
 batch cap differs from its default 500.
 

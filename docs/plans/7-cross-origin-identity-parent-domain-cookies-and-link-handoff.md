@@ -56,9 +56,9 @@ evidence links both ids when the user identifies.
 ## Progress
 
 
-- [ ] M1: The "one account, several properties" guide documents `storage: "cookie"` with `cookieDomain`, and a Chromium smoke test across two subdomains shows one anonymous id and one producer session ID on both (server sessions remain source-scoped).
-- [ ] M2: `linkTo(url)` and the start-up handoff adopt or record an incoming anonymous id with the parameter stripped from the address bar, covered by unit tests and the smoke test.
-- [ ] M3: A live conformance test proves that a marketing-origin page view followed by an app-origin identify resolves to one canonical user through the server's funnel endpoint.
+- [x] M1: The "one account, several properties" guide documents `storage: "cookie"` with `cookieDomain`, and a Chromium smoke test across two subdomains shows one anonymous id and one producer session ID on both (server sessions remain source-scoped).
+- [x] M2: `linkTo(url)` and the start-up handoff adopt or record an incoming anonymous id with the parameter stripped from the address bar, covered by unit tests and the smoke test.
+- [x] M3: A live conformance test proves that a marketing-origin page view followed by an app-origin identify resolves to one canonical user through the server's funnel endpoint.
 
 
 ## Surprises & Discoveries
@@ -103,7 +103,15 @@ Source implementation passes 85 unit cases and two explicit no-DOM/SSR cases, in
 six handoff/shared-storage cases and the existing transport/trait regressions. Types pass.
 The minified JavaScript/React artifacts are 8565/1550 bytes gzip within the existing budgets.
 Cookie persistence checks, fresh shared-state reads and allowlisted startup handoff are
-implemented; real multi-origin Chromium and server funnel acceptance remain pending.
+implemented and accepted by eight real Chromium families against the server: two already-open
+parent-domain tabs, propagated identifiers/org/user/reset/session/opt-out, fresh and seeded
+cross-origin handoff, authenticated/conflicting-cookie negatives, privacy suppression, rejected
+cookie persistence and flag/drop/off bot behavior. Population barriers and host-specific funnel
+assertions prevent an early empty zero or the app's own page view from passing the negative
+cases. Nine required live cases also pass, including independent email_hmac identity stitching
+and immutable duplicate retry. Server acceptance ownership remains
+mori://shinzui/kansoku/plans/38-single-tenant-consumption-guide-for-dashboards-and-experiments;
+its final packaged release gate is tracked by the local plan 8.
 
 
 ## Context and Orientation
@@ -119,8 +127,8 @@ when cookies are unavailable. `createIdentity` in `packages/kansoku-js/src/ident
 reads or creates `<prefix>.anonymous_id` and persists `user_id`, `organization_id` and
 `identifiers` through the same adapter; `createSession` in `session.ts` persists the session
 record there too; the delivery queue mirror always uses per-tab sessionStorage
-([ADR 3](../adr/0003-identity-and-session-persistence.md)). None of the guides under
-`docs/guides/` mention `cookieDomain` or the subdomain case, and the examples under
+([ADR 3](../adr/0003-identity-and-session-persistence.md)). At the start of this plan, none of the guides under
+`docs/guides/` mentioned `cookieDomain` or the subdomain case, and the examples under
 `examples/` use the default localStorage adapter.
 
 Attribution already reads `location.search` once per page view (`attribution.ts`), and
@@ -130,7 +138,7 @@ without emitting a navigation page view. Identifier validation lives in
 `packages/kansoku-js/src/contract/validate.ts`. The server treats the top-level
 `anonymousId` as the implicit `cookie` signal and binds every `identifiers` entry to the
 user on an event carrying `userId`; the vocabulary is `cookie`, `device`, `fingerprint`,
-`email_sha256` (`mori://shinzui/kansoku/okf/adrs/concepts/ADR-5`). Browser checks run with
+`email_sha256` and `email_hmac` (`mori://shinzui/kansoku/okf/adrs/concepts/ADR-5`). Browser checks run with
 Playwright under `test/smoke/` (`just test-smoke`), opt-in server conformance under
 `test/live/` (`just test-live`, configured by `KANSOKU_LIVE_*` variables), and unit tests with
 `just test`; `just check` runs typecheck, lint, format, SSR smoke, contract, package, size and

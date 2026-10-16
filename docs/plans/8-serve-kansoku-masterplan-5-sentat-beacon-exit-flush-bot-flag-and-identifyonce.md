@@ -45,7 +45,7 @@ Delivery remains best effort; a queued beacon is not server acceptance.
 
 - [x] M1: Transport-time sentAt uses the event clock and immutable event IDs across retries.
 - [x] M2: Lifecycle-safe beacon/keepalive exit delivery and governed page_leave pass browsers.
-- [ ] M3: Bot flags and email_hmac vocabulary agree with server/generated types.
+- [x] M3: Bot flags and email_hmac vocabulary agree with server/generated types.
 - [x] M4: identify v2 and identify_once v1 helpers validate and update identity consistently.
 - [ ] M5: Final contract pin and required live/browser conformance pass without feature skips.
 
@@ -108,7 +108,7 @@ passes the required governed-trait live case in all three telemetry modes. Runti
 commit is 0a4eea715b5f34fad8593e3dfd123ce407976c95; its artifact hash is recorded by
 `mori://shinzui/kansoku/plans/39-beacon-ingest-route-for-page-exit-delivery`.
 The source contract pin is server commit 3d0e3d8 under `mori://shinzui/kansoku`
-(commit artifact URI pending). M3 and M5, plus the local cross-origin plan, remain open for
+(commit artifact URI pending). M3 bot/email_hmac and local cross-origin behavior pass the required real-server/browser checks; M5 remains open for
 `mori://shinzui/kansoku/plans/38-single-tenant-consumption-guide-for-dashboards-and-experiments`.
 
 ## Context and Orientation

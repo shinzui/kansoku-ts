@@ -21,6 +21,8 @@ keep metrics service tokens out of browser bundles.
 
 Run `just check` and `just test` for local verification, `just test-smoke` for Chromium
 (install it once using `node node_modules/@playwright/test/cli.js install chromium`),
-and `just test-live` for opt-in server conformance. Tests skip live checks when unconfigured.
+and `just test-live` for opt-in server conformance. Optional local runs skip live checks when unconfigured;
+`KANSOKU_REQUIRE_LIVE=1 just test-live` requires the server and both credentials and permits no
+feature skips. The joint server gate also requires real protocol and Chromium checks.
 
 [Cross-origin identity and shared properties](docs/guides/cross-origin-identity.md).

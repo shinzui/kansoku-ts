@@ -117,7 +117,7 @@ A separate trait helper case passes in each of three telemetry modes.
 
 Runtime/test consumer commit f26f74358d2931a94b40c1a7077f6b7630edd01a produced JavaScript
 SHA256 f4a20924a5f97eb4774cd3ed2cf0a369efb93e045bfb561de1957cd36e460f56. Final metadata pins
-mori://shinzui/kansoku at commit bda6b3a0a870ab5420fe5ffd8590f250af2a6546
+mori://shinzui/kansoku at commit e18b4f41c917ddfade50b52c1d622558adf1c6b8
 (commit artifact URI pending); generated artifacts are unchanged from the tested wire contract.
 Acceptance ownership and private/sanitized evidence are recorded by
 mori://shinzui/kansoku/plans/38-single-tenant-consumption-guide-for-dashboards-and-experiments.

@@ -289,13 +289,13 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
     return inFlight
   }
   function exitFlush() {
-    if (suppressed()) return
     exiting = true
     try {
       for (const listener of exitListeners) listener()
     } finally {
       exiting = false
     }
+    if (suppressed()) return
     const budget = exitBudget()
     const beacon = config.exitTransport === "beacon"
     const batch: AnalyticsEvent[] = []
@@ -468,14 +468,9 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
   let pageSnapshot: { event: AnalyticsEvent; started: number; left: boolean } | undefined
   const monotonic = () => performance.now()
   const leavePage = () => {
-    if (
-      !pageSnapshot ||
-      pageSnapshot.left ||
-      core.config.autocapture.pageLeave === false ||
-      core.isSuppressed()
-    )
-      return
+    if (!pageSnapshot || pageSnapshot.left || core.config.autocapture.pageLeave === false) return
     pageSnapshot.left = true
+    if (core.isSuppressed()) return
     const original = pageSnapshot.event
     core.enqueueBuilt({
       ...original,
@@ -492,10 +487,16 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
     })
   }
   core.onExit(leavePage)
+  const optOut = core.optOut
   const client: KansokuClient = Object.assign(core, createIdentityApi(core), {
+    optOut() {
+      pageSnapshot = undefined
+      optOut()
+    },
     page(properties?: JsonObject, trackOptions?: TrackOptions) {
       if (typeof document === "undefined") return
       if (core.isSuppressed()) {
+        pageSnapshot = undefined
         core.drop("opted_out", [])
         return
       }

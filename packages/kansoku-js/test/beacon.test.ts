@@ -218,3 +218,39 @@ test("retry and split serialization restamps only sentAt with the injected clock
     new Date(3000).toISOString(),
   )
 })
+
+test("privacy transitions retire old page snapshots without resurrecting identity", async () => {
+  beacon(() => true)
+  const first = fixture()
+  first.client.page()
+  first.client.optOut()
+  first.client.optIn()
+  first.client.page()
+  await first.client.flush()
+  expect(
+    first.mock.requests
+      .flatMap((request) => request.body as AnalyticsEvent[])
+      .map((event) => event.eventName),
+  ).toEqual(["page_view"])
+  await first.client.shutdown()
+  const original = Object.getOwnPropertyDescriptor(navigator, "globalPrivacyControl")
+  Object.defineProperty(navigator, "globalPrivacyControl", { value: false, configurable: true })
+  try {
+    const second = fixture({ respectGlobalPrivacyControl: true })
+    second.client.page()
+    Object.defineProperty(navigator, "globalPrivacyControl", { value: true, configurable: true })
+    hide()
+    Object.defineProperty(navigator, "globalPrivacyControl", { value: false, configurable: true })
+    window.dispatchEvent(new Event("pageshow"))
+    hide()
+    await second.client.flush()
+    expect(
+      second.mock.requests
+        .flatMap((request) => request.body as AnalyticsEvent[])
+        .some((event) => event.eventName === "page_leave"),
+    ).toBe(false)
+  } finally {
+    if (original) Object.defineProperty(navigator, "globalPrivacyControl", original)
+    else Reflect.deleteProperty(navigator, "globalPrivacyControl")
+  }
+})

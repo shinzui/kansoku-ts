@@ -9,6 +9,7 @@ export function createNoopClient(): KansokuClient {
     writeKey: "",
     sourceService: "",
     autoStart: false,
+    exitTransport: "keepalive",
     flushAt: 20,
     flushIntervalMs: 5000,
     maxQueueSize: 1000,
@@ -51,7 +52,13 @@ export function createNoopClient(): KansokuClient {
     getSessionId: empty,
     getUserId: () => undefined,
     isOptedOut: () => true,
-    stats: Object.freeze({ queued: 0, accepted: 0, rejected: 0, dropped: 0 }),
+    stats: Object.freeze({
+      queued: 0,
+      accepted: 0,
+      bestEffortQueued: 0,
+      rejected: 0,
+      dropped: 0,
+    }),
     config,
   }
 }

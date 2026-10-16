@@ -4,7 +4,7 @@ import { createFetchMock } from "../../../test/helpers/fetch-mock.js"
 import { createInternalClient } from "../src/client.js"
 import { jsonBytes } from "../src/queue.js"
 
-test("exit flush chunks keepalive bodies, dedupes transitions, and follows start/stop", async () => {
+test("exit flush shares one total keepalive allowance, dedupes transitions, and follows start/stop", async () => {
   const mock = createFetchMock()
   const client = createInternalClient({
     baseUrl: "https://analytics.test",
@@ -23,7 +23,7 @@ test("exit flush chunks keepalive bodies, dedupes transitions, and follows start
   client.start()
   window.dispatchEvent(new Event("pagehide"))
   window.dispatchEvent(new Event("pagehide"))
-  expect(mock.requests.length).toBeGreaterThan(1)
+  expect(mock.requests.length).toBe(1)
   const exitCount = mock.requests.length
   for (const request of mock.requests) {
     expect(request.keepalive).toBe(true)

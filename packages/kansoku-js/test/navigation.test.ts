@@ -23,8 +23,14 @@ test("captures SPA navigation once per origin/path/query and ignores hashes", as
   location.hash = "#install"
   await nextNavigation()
   await client.flush()
-  expect(events().map((event) => event.properties.path)).toEqual(["/", "/docs"])
-  expect(events()[1]!.properties.title).toBe("Docs")
+  expect(
+    events()
+      .filter((event) => event.eventName === "page_view")
+      .map((event) => event.properties.path),
+  ).toEqual(["/", "/docs"])
+  expect(events().filter((event) => event.eventName === "page_view")[1]!.properties.title).toBe(
+    "Docs",
+  )
   history.pushState({}, "", "/back-target")
   await nextNavigation()
   history.back()

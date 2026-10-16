@@ -2,7 +2,7 @@ import { collectContext, isDoNotTrackEnabled, isGlobalPrivacyControlEnabled } fr
 import { BUILT_IN_SCHEMA_VERSIONS, SESSION_START } from "./contract/events.js"
 import { validateEvent } from "./contract/validate.js"
 import type { AnalyticsEvent, JsonObject } from "./contract/wire.js"
-import { buildEvent } from "./envelope.js"
+import { buildEvent, randomId } from "./envelope.js"
 import type { WebFields } from "./envelope.js"
 import { recordExposure } from "./experiment.js"
 import { createIdentityApi } from "./identity-api.js"
@@ -10,11 +10,11 @@ import { createIdentity } from "./identity.js"
 import { attachExitFlush } from "./lifecycle.js"
 import { installNavigationCapture } from "./navigation.js"
 import { buildPageView } from "./page.js"
-import { createQueue, jsonBytes } from "./queue.js"
+import { createQueue } from "./queue.js"
 import { backoffDelayMs } from "./retry.js"
 import { createSession } from "./session.js"
 import { readJSON, resolveStorage, sessionStorageAdapter } from "./storage.js"
-import { sendBatch } from "./transport.js"
+import { exitBudget, sendBatch, serializeBatch } from "./transport.js"
 import type { ExperimentOptions } from "./types.js"
 import type {
   DropReason,
@@ -25,6 +25,8 @@ import type {
 } from "./types.js"
 import { version } from "./version.js"
 
+const jsonBytesRaw = (body: string) => new TextEncoder().encode(body).byteLength
+
 export function resolveOptions(options: KansokuOptions): ResolvedKansokuOptions {
   const url = new URL(options.baseUrl)
   if (!["http:", "https:"].includes(url.protocol))
@@ -33,6 +35,7 @@ export function resolveOptions(options: KansokuOptions): ResolvedKansokuOptions 
   const config: ResolvedKansokuOptions = Object.freeze({
     sourceService: "",
     autoStart: true,
+    exitTransport: "keepalive",
     flushAt: 20,
     flushIntervalMs: 5000,
     maxQueueSize: 1000,
@@ -57,8 +60,16 @@ export function resolveOptions(options: KansokuOptions): ResolvedKansokuOptions 
       setTimeout: globalThis.setTimeout.bind(globalThis),
       clearTimeout: globalThis.clearTimeout.bind(globalThis),
     },
-    autocapture: Object.freeze({ pageViews: true, sessions: true, ...options.autocapture }),
-    schemaVersions: Object.freeze({ ...BUILT_IN_SCHEMA_VERSIONS, ...options.schemaVersions }),
+    autocapture: Object.freeze({
+      pageViews: true,
+      sessions: true,
+      pageLeave: true,
+      ...options.autocapture,
+    }),
+    schemaVersions: Object.freeze({
+      ...BUILT_IN_SCHEMA_VERSIONS,
+      ...options.schemaVersions,
+    }),
   })
   for (const field of [
     "flushAt",
@@ -79,6 +90,8 @@ export function resolveOptions(options: KansokuOptions): ResolvedKansokuOptions 
     config.retryBaseDelayMs < 0
   )
     throw new TypeError("retry limits must be nonnegative")
+  if (!["keepalive", "beacon"].includes(config.exitTransport))
+    throw new TypeError("invalid exitTransport")
   return config
 }
 
@@ -97,10 +110,17 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
   if (optedOut) mirror.remove(queueKey)
   let started = false
   let terminal = false
+  let exiting = false
   let closing = false
   let pendingSession: string | undefined
   let inFlight: Promise<void> | undefined
-  const counters = { accepted: 0, rejected: 0, dropped: 0 }
+  const counters = {
+    accepted: 0,
+    bestEffortQueued: 0,
+    rejected: 0,
+    dropped: 0,
+  }
+  const exitListeners = new Set<() => void>()
   const providers = new Set<() => JsonObject>()
   const installers: Array<() => (() => void) | void> = []
   let teardowns: Array<() => void> = []
@@ -134,7 +154,12 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
     const baseContext: JsonObject = {}
     for (const provider of providers) Object.assign(baseContext, provider())
     return buildEvent(
-      { identity: identity.snapshot(), sessionId: currentSession(), config, baseContext },
+      {
+        identity: identity.snapshot(),
+        sessionId: currentSession(),
+        config,
+        baseContext,
+      },
       name,
       properties,
       trackOptions,
@@ -175,7 +200,7 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
       return false
     }
     persist()
-    if (started && queue.size >= config.flushAt) void flush()
+    if (started && !exiting && queue.size >= config.flushAt) void flush()
     return true
   }
   function boundEvent(
@@ -198,11 +223,18 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
     persist()
     return removed
   }
-  async function deliver(batch: AnalyticsEvent[], keepalive = false): Promise<void> {
+  async function deliver(
+    batch: AnalyticsEvent[],
+    keepalive = false,
+    serialized?: string,
+  ): Promise<void> {
     for (let attempt = 0; ; attempt++) {
       const active = new Set(queue.toJSON().map((event) => event.eventId))
       if (optedOut || !batch.some((event) => active.has(event.eventId))) return
-      const outcome = await sendBatch(config, batch, { keepalive })
+      const outcome = await sendBatch(config, batch, {
+        keepalive,
+        ...(serialized ? { serialized } : {}),
+      })
       if (outcome.kind === "accepted") {
         const removed = new Set(remove(batch).map((event) => event.eventId))
         const rejected = outcome.ack.rejected.flatMap((item) => {
@@ -221,6 +253,7 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
         return
       }
       if (outcome.kind === "too_large") {
+        if (keepalive) return // Retain the mirror; normal delivery can split safely.
         // Keep both halves persisted until each has a terminal response.
         const half = Math.ceil(batch.length / 2)
         await deliver(batch.slice(0, half), keepalive)
@@ -235,7 +268,10 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
         return
       }
       await new Promise<void>((resolve) =>
-        config.timers.setTimeout(resolve, backoffDelayMs(attempt, config.retryBaseDelayMs)),
+        config.timers.setTimeout(
+          resolve,
+          Math.max(outcome.retryAfterMs ?? 0, backoffDelayMs(attempt, config.retryBaseDelayMs)),
+        ),
       )
     }
   }
@@ -254,21 +290,55 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
   }
   function exitFlush() {
     if (suppressed()) return
-    const batches: AnalyticsEvent[][] = []
-    let batch: AnalyticsEvent[] = []
-    for (const event of queue.toJSON()) {
-      if (jsonBytes([event]) > 61440) continue // The mirror retains events too large for keepalive.
-      if (
-        batch.length &&
-        (batch.length >= config.maxBatchEvents || jsonBytes([...batch, event]) > 61440)
-      ) {
-        batches.push(batch)
-        batch = []
-      }
-      batch.push(event)
+    exiting = true
+    try {
+      for (const listener of exitListeners) listener()
+    } finally {
+      exiting = false
     }
-    if (batch.length) batches.push(batch)
-    for (const events of batches) void deliver(events, true)
+    const budget = exitBudget()
+    const beacon = config.exitTransport === "beacon"
+    const batch: AnalyticsEvent[] = []
+    let serialized = ""
+    for (const event of queue.toJSON()) {
+      if (batch.length >= config.maxBatchEvents) break
+      const candidate = serializeBatch(config, [...batch, event], beacon)
+      if (jsonBytesRaw(candidate) + budget.bytes > 61440) continue
+      batch.push(event)
+      serialized = candidate
+    }
+    if (!batch.length) return
+    const bytes = jsonBytesRaw(serialized)
+    budget.bytes += bytes
+    if (beacon) {
+      try {
+        if (
+          typeof navigator !== "undefined" &&
+          typeof navigator.sendBeacon === "function" &&
+          navigator.sendBeacon(
+            `${config.baseUrl}/v1/beacon`,
+            new Blob([serialized], { type: "text/plain;charset=UTF-8" }),
+          )
+        ) {
+          counters.bestEffortQueued += batch.length
+          return // No response is available. Keep every ID in the queue mirror.
+        }
+      } catch {
+        /* A refused/absent API can use the same reserved allowance. */
+      }
+      serialized = serializeBatch(config, batch)
+      budget.bytes -= bytes
+      const fallbackBytes = jsonBytesRaw(serialized)
+      if (fallbackBytes + budget.bytes > 61440) return
+      budget.bytes += fallbackBytes
+      void deliver(batch, true, serialized).finally(() => {
+        budget.bytes -= fallbackBytes
+      })
+    } else {
+      void deliver(batch, true, serialized).finally(() => {
+        budget.bytes -= bytes
+      })
+    }
   }
   function onStart(install: () => (() => void) | void) {
     installers.push(install)
@@ -360,6 +430,12 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
       }
     },
     onStart,
+    onExit(listener: () => void) {
+      exitListeners.add(listener)
+      return () => {
+        exitListeners.delete(listener)
+      }
+    },
     drop,
     isSuppressed: suppressed,
     setSuppression(check: () => boolean) {
@@ -389,10 +465,43 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
       (core.config.respectDoNotTrack && isDoNotTrackEnabled()) ||
       (core.config.respectGlobalPrivacyControl && isGlobalPrivacyControlEnabled()),
   )
+  let pageSnapshot: { event: AnalyticsEvent; started: number; left: boolean } | undefined
+  const monotonic = () => performance.now()
+  const leavePage = () => {
+    if (
+      !pageSnapshot ||
+      pageSnapshot.left ||
+      core.config.autocapture.pageLeave === false ||
+      core.isSuppressed()
+    )
+      return
+    pageSnapshot.left = true
+    const original = pageSnapshot.event
+    core.enqueueBuilt({
+      ...original,
+      eventId: randomId(),
+      eventName: "page_leave",
+      occurredAt: new Date(core.config.now()).toISOString(),
+      receivedAt: new Date(core.config.now()).toISOString(),
+      schemaVersion: core.config.schemaVersions.page_leave ?? 1,
+      properties: {
+        url: original.properties.url ?? "",
+        path: original.properties.path ?? "",
+        durationMs: Math.max(0, monotonic() - pageSnapshot.started),
+      },
+    })
+  }
+  core.onExit(leavePage)
   const client: KansokuClient = Object.assign(core, createIdentityApi(core), {
     page(properties?: JsonObject, trackOptions?: TrackOptions) {
-      if (typeof document !== "undefined")
-        core.enqueueBuilt(buildPageView(core, properties, trackOptions))
+      if (typeof document === "undefined") return
+      if (core.isSuppressed()) {
+        core.drop("opted_out", [])
+        return
+      }
+      leavePage()
+      const event = buildPageView(core, properties, trackOptions)
+      if (core.enqueueBuilt(event)) pageSnapshot = { event, started: monotonic(), left: false }
     },
     experiment(
       experiment: string,
@@ -414,7 +523,15 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
       lastPage = key
     }
     capture()
-    return installNavigationCapture(core.config, capture)
+    const detach = installNavigationCapture(core.config, capture)
+    const resume = (event: PageTransitionEvent) => {
+      if (event.persisted) client.page()
+    }
+    window.addEventListener("pageshow", resume)
+    return () => {
+      detach()
+      window.removeEventListener("pageshow", resume)
+    }
   })
   if (core.config.autoStart) client.start()
   return client

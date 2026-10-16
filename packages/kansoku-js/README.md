@@ -16,13 +16,15 @@ await analytics.flush()
 ## Browser capture
 
 By default the client records the initial `page_view`, History API navigations and
-`session_start`. Initialise after the page title is set. Page views include the full URL,
+`session_start`. Each view can emit one best-effort `page_leave` on navigation or exit,
+with a monotonic duration and the original page identity/session. BFCache restoration starts
+a new view interval. Set `autocapture.pageLeave: false` to disable it. Initialise after the page title is set. Page views include the full URL,
 path, title, document referrer and UTM attribution (`utmSource`, `utmMedium`, `utmCampaign`,
 `utmContent`, `utmTerm`). History changes are captured on the next task so a router's
 push/replace pair records once; hash-only changes are ignored.
 
 Call `page(properties?, options?)` for explicit page views. Disable automatic capture with
-`autocapture: { pageViews: false, sessions: false }`. `autoStart: false` defers the initial
+`autocapture: { pageViews: false, sessions: false, pageLeave: false }`. `autoStart: false` defers the initial
 page view and History patch until `start()`. `stop()` removes the patch; restarting on the
 same URL does not record another initial view.
 
@@ -63,7 +65,7 @@ and opt-out silently skip automatic capture; explicit calls report `opted_out` d
 ## Core API
 
 `track(name, properties?, options?)` queues an event with anonymous and session IDs.
-`flush()` waits for pending batches. `stats` reports queued, accepted, rejected and dropped
+`flush()` waits for pending batches. `stats` reports queued, accepted, bestEffortQueued, rejected and dropped
 counts. `onDrop(info)` receives `queue_full`, `rejected`, `permanent_error`,
 `retries_exhausted`, `before_send`, `opted_out` or `invalid` and the affected events.
 `beforeSend(event)` can redact fields or return `null` to drop an event.
@@ -80,11 +82,13 @@ Sessions renew after thirty minutes of inactivity by default.
 
 ## Delivery and storage
 
-All deliveries use `POST /v1/batch` with the public write key in `X-Api-Key`.
+Normal deliveries use `POST /v1/batch` with the public write key in `X-Api-Key`.
 HTTP 202 ends delivery, including individual rejections, which are counted as drops.
 400, 401, 403, 404 and non-retryable 503 responses are permanent. Oversized batches (413)
 are split; an oversized single event is dropped. Unknown outcomes, transient 503 responses,
 network failures and timeouts retry with the same IDs and bounded exponential full jitter.
+A positive whole-second 429 Retry-After is a minimum delay. Every transmission stamps a
+serialization copy with sentAt from the same injected now clock; producer content and IDs stay fixed.
 
 Defaults: flush at 20 events or every five seconds, 100 events and 1 MiB per request,
 1000 queued events, five retries, ten-second request timeout. The newest event is dropped
@@ -97,9 +101,21 @@ Identity, session and opt-out state use localStorage by default. Choose `storage
 The `.queue` mirror always uses per-tab sessionStorage (`persistQueue: false` disables it).
 Blocked browser storage falls back to memory. No fingerprint is generated. Keyed email identifiers are opaque backend-produced values; never expose the HMAC pepper to browser code. The normalization and rotation contract is owned by `mori://shinzui/kansoku` (`docs/guides/send-events.md`; artifact-level URI pending).
 
-On page exit, keepalive fetch attempts bodies up to 60 KiB. Browsers also limit aggregate
-in-flight keepalive bytes, so exit delivery is best effort. Unanswered events remain in
-sessionStorage for the next same-tab load; closing the tab can lose them.
+On page exit, `exitTransport: "keepalive"` is the default. Opt into `"beacon"` with a server
+containing `mori://shinzui/kansoku/plans/39-beacon-ingest-route-for-page-exit-delivery`.
+Beacon sends a text/plain UTF-8 `{writeKey,batch}` envelope at `/v1/beacon`. No query-string
+credential or auth header is used. A true return increments `bestEffortQueued` and retains
+every mirrored event; it never increments accepted or permits HTTP-status fallback. False,
+missing or throwing APIs try keepalive fetch if the shared allowance permits. A later normal
+acknowledged retry removes the same IDs using server deduplication.
+
+All client instances share a conservative 60 KiB allowance per document, measuring complete
+UTF-8 serialized bodies including sentAt and body credentials. Keepalive reservations release
+when fetch settles; beacon has no completion callback, so its reservation lasts for that
+document, including BFCache restoration. Oversized events remain queued for normal delivery.
+Visibilitychange followed by pagehide performs one exit attempt. Other scripts can still consume
+the browser's shared quota; both exit transports may fail. Pending events are bounded by queue
+capacity, remain in per-tab sessionStorage when enabled, and can be lost when the tab closes.
 
 The package imports safely without browser globals. Supported Node versions can use
 `require(esm)` (Node 20.19+, or 22.12+ on Node 22). Jest's default CommonJS mode needs an

@@ -5,7 +5,7 @@ description: Capture page views and session starts through the shared delivery e
 docId: ADR-4
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-15T04:05:00Z
+timestamp: 2026-10-16T03:47:34Z
 generated:
   by: process:codex
   at: 2026-10-15T04:05:00Z
@@ -20,7 +20,7 @@ behavior. Framework effect restarts must not count another view of the same page
 
 ## Decision
 
-Capture only page views and session starts automatically. Collect locale, timezone, screen,
+Capture page views, session starts and best-effort page leaves automatically. Collect locale, timezone, screen,
 viewport, user agent and library version per event. Add full URL, referrer and UTM fields
 to page views. Caller properties and context can override their respective defaults.
 Do not compute fingerprints, precise location or IP addresses.
@@ -50,3 +50,13 @@ React is unnecessary with the reversible core lifecycle.
 Vanilla apps need one construction call. React can drive lifecycle from an effect safely.
 Full URLs can contain personal data; applications must redact them with beforeSend where
 needed. Privacy signals are explicit application policy options.
+
+## Page-leave lifecycle
+
+A successful page view retains its identity/session and URL snapshot. A SPA transition or
+first exit closes that view once with a monotonic nonnegative durationMs, through the same
+privacy, validation and beforeSend pipeline. It never renews a session merely to report an old
+view. Page leave is lifecycle telemetry rather than user engagement, and cannot guarantee
+complete time measurement. `autocapture.pageLeave=false` disables it. Visibility and pagehide
+share one exit transition; a persisted BFCache pageshow starts a new view interval. Ordinary
+stop/start keeps the existing view and navigation dedupe key.

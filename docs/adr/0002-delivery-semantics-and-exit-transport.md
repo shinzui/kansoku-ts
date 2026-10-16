@@ -5,7 +5,7 @@ description: Share one batch delivery engine with bounded retries, loss accounti
 docId: ADR-2
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-15T04:00:00Z
+timestamp: 2026-10-16T03:47:34Z
 generated:
   by: process:codex
   at: 2026-10-15T04:00:00Z
@@ -21,7 +21,7 @@ Framework consumers need lifecycle setup and cleanup that can run repeatedly.
 
 ## Decision
 
-Deliver arrays exclusively to `/v1/batch` with `X-Api-Key`. A valid 202 acknowledgement
+Deliver normal request arrays to `/v1/batch` with `X-Api-Key`. A valid 202 acknowledgement
 ends delivery for every event, including rejections. Count rejections as drops. Treat
 400, 401, 403, 404 and non-retryable 503 responses as permanent; split 413 batches until
 single-event failures can be dropped. Retain split halves in the persisted queue until
@@ -42,7 +42,7 @@ awaits the final flush. Registered context providers survive a stop/start cycle.
 
 ## Alternatives considered
 
-Beacon cannot send the required credential header. Removing a split batch before its
+Beacon cannot send a credential header; the supported server now supplies a narrow body-key route. Removing a split batch before its
 halves finish creates a persistence gap. A terminal-only lifecycle is unsuitable for
 React StrictMode's repeated effect setup and cleanup.
 
@@ -52,3 +52,20 @@ Framework bindings own activation without duplicating delivery logic. Navigation
 is best effort; tab closure with a failed request can lose pending events. The SDK exposes
 accepted, rejected and dropped counts plus drop callbacks rather than claiming exactly-once
 network delivery.
+
+## Initial release exit adaptation
+
+The supported server body-key route is
+`mori://shinzui/kansoku/plans/39-beacon-ingest-route-for-page-exit-delivery`. Keepalive remains
+the default; explicit beacon uses text/plain UTF-8 envelopes and public write keys only.
+Every normal, retry, split and beacon serialization stamps sentAt with the event's configured
+clock while leaving queued producer content immutable. Positive whole-second Retry-After
+values set a minimum retry delay.
+
+All instances share a 60 KiB per-document budget for complete UTF-8 bodies. Keepalive
+reservations release on settlement; successful beacon reservations persist for that document
+because completion cannot be observed. False, throwing or missing APIs can try keepalive
+within the reservation; true cannot reveal an HTTP rejection or trigger HTTP fallback.
+A true return increments bestEffortQueued, never accepted, and retains the mirror for an
+acknowledged retry. Normal queue capacity bounds retained events without a silent timer expiry.
+The durable server ledger deduplicates the same event IDs after lost acknowledgements.

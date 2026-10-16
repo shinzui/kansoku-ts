@@ -48,7 +48,13 @@ describeLive("live ingest", () => {
       response: { retryable: false, code: expect.any(String) },
     })
     expect(requests.slice(1).every((request) => request.status === 202)).toBe(true)
-    expect(client.stats).toEqual({ queued: 0, accepted: count, rejected: 0, dropped: 0 })
+    expect(client.stats).toEqual({
+      bestEffortQueued: 0,
+      queued: 0,
+      accepted: count,
+      rejected: 0,
+      dropped: 0,
+    })
     await client.shutdown()
   })
   test("a bogus key is permanent and is never retried", async () => {

@@ -43,7 +43,7 @@ Delivery remains best effort; a queued beacon is not server acceptance.
 ## Progress
 
 
-- [ ] M1: Transport-time sentAt uses the event clock and immutable event IDs across retries.
+- [x] M1: Transport-time sentAt uses the event clock and immutable event IDs across retries.
 - [ ] M2: Lifecycle-safe beacon/keepalive exit delivery and governed page_leave pass browsers.
 - [ ] M3: Bot flags and email_hmac vocabulary agree with server/generated types.
 - [x] M4: identify v2 and identify_once v1 helpers validate and update identity consistently.
@@ -88,7 +88,7 @@ Page-leave is lifecycle telemetry, not user engagement. Set-once initializes; la
 M4 is implemented and verified against the owned packaged server in all three telemetry
 modes. Its generated trait vocabulary, version defaults, explicit overrides, privacy gates,
 identity updates, alias argument reservation and React/SSR behavior pass the local gates.
-M1/M2/M3/M5 remain open; M4 evidence does not establish beacon delivery or final release
+M1 is implemented; M2/M3/M5 remain open; M4 evidence does not establish beacon delivery or final release
 conformance.
 
 ## Context and Orientation
@@ -231,3 +231,14 @@ with implementation; ADR-8 records the proposed coordination now.
 
 Revision note (2026-10-15): reconcile timestamp clock, quota/acknowledgement semantics, schema
 versions, email_hmac, JSON filters and mandatory conformance with the reviewed server MP-5.
+
+M1/M2 implementation checkpoint (2026-10-16): sentAt is stamped on serialization copies
+with the configured clock, including retries, split requests and beacons. The seven new
+transport/lifecycle unit cases prove immutable IDs/content, conservative cross-instance
+UTF-8 budgeting, false/missing/throw fallback, original page identity/session and monotonic
+duration, SPA/BFCache event handling, privacy and beforeSend. The full suite has 76 passing
+unit cases, with optional live/SSR cases separated from required evidence. Source build,
+types, lint and package checks pass; JavaScript gzip is 10115 bytes and React 1843 bytes.
+The contract pin now contains the implemented beacon API in server commit 3d0e3d8 under
+`mori://shinzui/kansoku` (commit artifact URI pending). Required Chromium/native packaged
+acceptance remains pending, including an actual preserved BFCache document.

@@ -3,7 +3,7 @@ export type DeliveryOutcome =
   | { kind: "accepted"; ack: BatchAck }
   | { kind: "permanent"; status: number; envelope?: ProblemDetails }
   | { kind: "too_large" }
-  | { kind: "retryable"; detail?: string }
+  | { kind: "retryable"; detail?: string; retryAfterMs?: number }
 export function backoffDelayMs(
   attempt: number,
   baseMs: number,
@@ -15,6 +15,15 @@ export async function classifyResponse(
   response: Response,
   count: number,
 ): Promise<DeliveryOutcome> {
+  if (response.status === 429) {
+    const value = response.headers.get("Retry-After")
+    const seconds = value && /^[0-9]+$/.test(value) ? Number(value) : NaN
+    return {
+      kind: "retryable",
+      detail: "HTTP 429",
+      ...(Number.isSafeInteger(seconds) && seconds > 0 ? { retryAfterMs: seconds * 1000 } : {}),
+    }
+  }
   if (response.status === 413)
     return count > 1 ? { kind: "too_large" } : { kind: "permanent", status: 413 }
   if ([400, 401, 403, 404].includes(response.status))

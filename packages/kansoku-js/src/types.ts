@@ -27,7 +27,12 @@ export interface KansokuOptions {
   cookieDomain?: string
   sessionTimeoutMs?: number
   schemaVersions?: Record<string, number>
-  autocapture?: { pageViews?: boolean; sessions?: boolean }
+  autocapture?: {
+    pageViews?: boolean
+    sessions?: boolean
+    pageLeave?: boolean
+  }
+  exitTransport?: "keepalive" | "beacon"
   optOut?: boolean
   respectDoNotTrack?: boolean
   respectGlobalPrivacyControl?: boolean
@@ -63,6 +68,7 @@ export interface TrackOptions {
 export interface KansokuStats {
   queued: number
   accepted: number
+  bestEffortQueued: number
   rejected: number
   dropped: number
 }

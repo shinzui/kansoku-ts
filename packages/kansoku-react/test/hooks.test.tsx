@@ -59,7 +59,7 @@ test("usePageView emits on mount and only when its key changes", async () => {
   hook.rerender({ page: "/a" })
   hook.rerender({ page: "/b" })
   await client.flush()
-  expect(events().map((event) => event.eventName)).toEqual(["page_view", "page_view"])
+  expect(events().map((event) => event.eventName)).toEqual(["page_view", "page_leave", "page_view"])
   expect(events()[0]!.properties.url).toBe(location.href)
 })
 test("usePageView warns once when automatic page capture is enabled", () => {

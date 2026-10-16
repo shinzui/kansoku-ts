@@ -6,6 +6,7 @@ export interface JsonObject {
 }
 export type { paths } from "../generated/schema.js"
 export type AnalyticsEvent = components["schemas"]["AnalyticsEvent"]
+export type BeaconEnvelope = components["schemas"]["BeaconEnvelope"]
 export type BatchAck = components["schemas"]["BatchAck"]
 export type RejectedEvent = components["schemas"]["RejectedEvent"]
 export type ProblemDetails = components["schemas"]["ProblemDetails"]

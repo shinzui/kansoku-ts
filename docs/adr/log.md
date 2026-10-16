@@ -2,6 +2,8 @@
 
 ## 2026-10-16
 
+- **Update**: Update accepted transport and capture decisions for body-key beacon and original-page lifecycle semantics.
+- **Update**: Record transport-clock stamping, shared document beacon reservations, queued-versus-acknowledged counters and page snapshot lifecycle.
 - **Update**: Record generated governed trait validation and versioned identify/set-once lifecycle decisions.
 
 ## 2026-10-15

@@ -21,7 +21,10 @@ test("page includes attribution, title, context, properties and schema pin", asy
   })
   client.page({ title: "caller" }, { schemaVersion: 2 })
   await client.flush()
-  expect(events()[1]).toMatchObject({ schemaVersion: 2, properties: { title: "caller" } })
+  expect(events().filter((event) => event.eventName === "page_view")[1]).toMatchObject({
+    schemaVersion: 2,
+    properties: { title: "caller" },
+  })
 })
 test("default capture records session_start before the initial page view", async () => {
   const { client, events } = fixture({ autocapture: {} })

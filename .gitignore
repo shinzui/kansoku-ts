@@ -18,3 +18,5 @@ test-results/
 playwright-report/
 examples/*/.env.local
 !examples/*/.env.example
+
+.dev/acceptance/

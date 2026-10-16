@@ -3,10 +3,34 @@ import { classifyResponse } from "./retry.js"
 import type { DeliveryOutcome } from "./retry.js"
 import type { ResolvedKansokuOptions } from "./types.js"
 
+// A transport copy gets a fresh clock stamp; queued producer data stays immutable.
+export function serializeBatch(
+  config: ResolvedKansokuOptions,
+  events: AnalyticsEvent[],
+  beacon = false,
+): string {
+  const sentAt = new Date(config.now()).toISOString()
+  const batch = events.map((event) => ({ ...event, sentAt }))
+  return JSON.stringify(beacon ? { writeKey: config.writeKey, batch } : batch)
+}
+
+// Every client instance in this document shares the same conservative allowance.
+// Beacon offers no completion callback, so its reservation lives for the document.
+const exitBudgets = new WeakMap<Document, { bytes: number }>()
+export function exitBudget(): { bytes: number } {
+  if (typeof document === "undefined") return { bytes: 61440 }
+  let budget = exitBudgets.get(document)
+  if (!budget) {
+    budget = { bytes: 0 }
+    exitBudgets.set(document, budget)
+  }
+  return budget
+}
+
 export async function sendBatch(
   config: ResolvedKansokuOptions,
   events: AnalyticsEvent[],
-  { keepalive = false } = {},
+  { keepalive = false, serialized }: { keepalive?: boolean; serialized?: string } = {},
 ): Promise<DeliveryOutcome> {
   const controller = new AbortController()
   let timeout: ReturnType<typeof setTimeout> | undefined
@@ -14,8 +38,11 @@ export async function sendBatch(
     try {
       const response = await config.fetch(`${config.baseUrl}/v1/batch`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Api-Key": config.writeKey },
-        body: JSON.stringify(events),
+        headers: {
+          "Content-Type": "application/json",
+          "X-Api-Key": config.writeKey,
+        },
+        body: serialized ?? serializeBatch(config, events),
         keepalive,
         ...(!keepalive ? { signal: controller.signal } : {}),
       })

@@ -34,7 +34,13 @@ test("three events flush once and overlapping callers share a flush", async () =
   expect(client.flush()).toBe(first)
   await first
   expect(mock.requests).toHaveLength(1)
-  expect(client.stats).toEqual({ queued: 0, accepted: 3, rejected: 0, dropped: 0 })
+  expect(client.stats).toEqual({
+    bestEffortQueued: 0,
+    queued: 0,
+    accepted: 3,
+    rejected: 0,
+    dropped: 0,
+  })
 })
 test("partial acceptance drops only rejected events and never retries them", async () => {
   const { client, mock, drops } = setup()
@@ -44,7 +50,13 @@ test("partial acceptance drops only rejected events and never retries them", asy
   await client.flush()
   expect(mock.requests).toHaveLength(1)
   expect(drops[0]).toMatchObject({ reason: "rejected", events: [{ eventName: "b" }] })
-  expect(client.stats).toEqual({ queued: 0, accepted: 2, rejected: 1, dropped: 1 })
+  expect(client.stats).toEqual({
+    bestEffortQueued: 0,
+    queued: 0,
+    accepted: 2,
+    rejected: 1,
+    dropped: 1,
+  })
 })
 test("permanent HTTP outcomes drop without retrying", async () => {
   for (const response of [status(400), status(401), envelope(503, "unavailable", false)]) {
@@ -76,7 +88,15 @@ test("transient outcomes retry unchanged batches and exhaustion accounts for los
   mock.respondWith(envelope(503, "busy", true), networkError(), ack(1))
   client.track("a")
   await client.flush()
-  expect(mock.requests.map((r) => r.body)).toEqual(Array(3).fill(mock.requests[0]!.body))
+  expect(
+    mock.requests.map((r) =>
+      (r.body as AnalyticsEvent[]).map(({ sentAt: _sentAt, ...event }) => event),
+    ),
+  ).toEqual(
+    Array(3).fill(
+      (mock.requests[0]!.body as AnalyticsEvent[]).map(({ sentAt: _sentAt, ...event }) => event),
+    ),
+  )
   expect(client.stats.accepted).toBe(1)
   const exhausted = setup({ maxRetries: 1 })
   exhausted.mock.respondWith(networkError(), networkError())
@@ -160,7 +180,11 @@ test("queue survives a reload in sessionStorage with the same event IDs", async 
   expect(localStorage.getItem(`${prefix}.queue`)).toBeNull()
   const second = setup({ persistQueue: true, storageKeyPrefix: prefix })
   await second.client.flush()
-  expect(second.mock.requests[0]!.body).toEqual(saved)
+  expect(
+    (second.mock.requests[0]!.body as AnalyticsEvent[]).map(
+      ({ sentAt: _sentAt, ...event }) => event,
+    ),
+  ).toEqual(saved)
   expect(JSON.parse(sessionStorage.getItem(`${prefix}.queue`)!)).toEqual([])
   sessionStorage.removeItem(`${prefix}.queue`)
 })

@@ -46,7 +46,7 @@ Delivery remains best effort; a queued beacon is not server acceptance.
 - [ ] M1: Transport-time sentAt uses the event clock and immutable event IDs across retries.
 - [ ] M2: Lifecycle-safe beacon/keepalive exit delivery and governed page_leave pass browsers.
 - [ ] M3: Bot flags and email_hmac vocabulary agree with server/generated types.
-- [ ] M4: identify v2 and identify_once v1 helpers validate and update identity consistently.
+- [x] M4: identify v2 and identify_once v1 helpers validate and update identity consistently.
 - [ ] M5: Final contract pin and required live/browser conformance pass without feature skips.
 
 ## Surprises & Discoveries
@@ -59,8 +59,13 @@ Unit/type/lint/strict-ADR checks pass (69 unit cases plus two explicit SSR cases
 9140-byte and React 1812-byte gzip outputs remain below their 10240/3072 budgets. Alias helper
 arguments now reserve previousId/newId against custom-property overrides, with the shared
 shape fixture asserting the conflicting-input case. A required
-live fixture now asserts actual accepted helper envelopes and server stitching/current-value
-precedence; its packaged-server execution remains pending, so M4 stays unchecked.
+live fixture asserts actual accepted helper envelopes and server stitching/current-value
+precedence. The owned packaged server passed it in legacy, http and http/dup telemetry modes,
+one non-skipped live case per mode (23 assertions each), using SDK commit
+6adee63714a631985cb9be1ec0e5f9fec7a4ecb6 and server contract pin
+6517962 in `mori://shinzui/kansoku` (commit artifact URI pending). Evidence is recorded by
+`mori://shinzui/kansoku/plans/40-person-properties-set-and-set-once-user-traits`.
+M4 is complete; the other transport/browser/release milestones remain open for the joint gate.
 
 
 Server schemaVersion defaults to v1; a v2 schema does not upgrade existing helper payloads.
@@ -80,7 +85,11 @@ Page-leave is lifecycle telemetry, not user engagement. Set-once initializes; la
 ## Outcomes & Retrospective
 
 
-Planning reviewed; no SDK code changed by this update.
+M4 is implemented and verified against the owned packaged server in all three telemetry
+modes. Its generated trait vocabulary, version defaults, explicit overrides, privacy gates,
+identity updates, alias argument reservation and React/SSR behavior pass the local gates.
+M1/M2/M3/M5 remain open; M4 evidence does not establish beacon delivery or final release
+conformance.
 
 ## Context and Orientation
 

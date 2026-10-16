@@ -56,7 +56,9 @@ and operation versions. Both helpers validate before mutating active identity an
 explicit per-call/configured legacy overrides. useIdentifyOnce follows the existing hook
 lifecycle, including StrictMode suppression and logout reset; no-DOM SSR stays inert.
 Unit/type/lint/strict-ADR checks pass (69 unit cases plus two explicit SSR cases); JavaScript
-9138-byte and React 1812-byte gzip outputs remain below their 10240/3072 budgets. A required
+9140-byte and React 1812-byte gzip outputs remain below their 10240/3072 budgets. Alias helper
+arguments now reserve previousId/newId against custom-property overrides, with the shared
+shape fixture asserting the conflicting-input case. A required
 live fixture now asserts actual accepted helper envelopes and server stitching/current-value
 precedence; its packaged-server execution remains pending, so M4 stays unchecked.
 

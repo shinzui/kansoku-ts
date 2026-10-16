@@ -47,7 +47,7 @@ export function createIdentityApi(client: InternalClient) {
         return
       }
       client.enqueueBuilt(
-        client.buildEvent("alias", { previousId, newId, ...properties }, undefined, undefined, {
+        client.buildEvent("alias", { ...properties, previousId, newId }, undefined, undefined, {
           anonymousId: previousId,
           userId: newId,
         }),

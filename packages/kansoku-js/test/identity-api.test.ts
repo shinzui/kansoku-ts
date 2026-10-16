@@ -6,7 +6,7 @@ test("identify, alias and group match the server helper shapes", async () => {
   const { client, events } = fixture()
   const anon = client.getAnonymousId()
   client.identify("user", { plan: "pro" })
-  client.alias("old-anon", "linked-user")
+  client.alias("old-anon", "linked-user", { previousId: "override", newId: "override" })
   client.group("org", { tier: "team" })
   client.setIdentifiers({ device: "dev-1", email_sha256: "ab12", email_hmac: "v1:opaque" })
   client.track("later")

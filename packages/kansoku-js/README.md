@@ -42,7 +42,8 @@ an unset value; a later set replaces it. An explicit `{ schemaVersion: 1 }` on i
 identity-only behavior. Current traits can reclassify historical metrics and are public
 analytics observations, never access-control facts.
 `alias(previousId, newId, properties?)` links identities for one event and leaves the stored
-user unchanged. `group(organizationId, properties?)` persists the organisation for later
+user unchanged. Its ID arguments override any same-named custom properties.
+`group(organizationId, properties?)` persists the organisation for later
 events. `setIdentifiers({ device, fingerprint, email_hmac, email_sha256, cookie })` replaces optional
 identity signals; provide only the keys needed. Values must contain 1–256 printable,
 non-space ASCII characters. The anonymous ID already supplies the implicit cookie signal.

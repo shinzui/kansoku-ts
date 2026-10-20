@@ -1,5 +1,9 @@
 # Bundle Update Log
 
+## 2026-10-20
+
+- **Update**: ADR-6: builds require bun >=1.4.2 (root engines.bun, enforced by scripts/build.ts) and verify each bundle's runtime exports against its source entry, after BUG-1.
+
 ## 2026-10-16
 
 - **Update**: Accept ADR-8 after final pinned server, required live/protocol/browser and previous-consumer workflow conformance.

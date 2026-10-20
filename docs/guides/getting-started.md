@@ -35,8 +35,11 @@ This builds the SDK first. Open the printed Vite URL, visit Pricing and Docs, cl
 and Flush. The stats show accepted events. The example imports `kansoku-js` through its
 package export map; there is no source alias.
 
-After npm publication, install with `bun add kansoku-js`. In a Vite or other bundled browser
-application, initialise after setting the page title:
+After npm publication, install with `bun add kansoku-js`. Until then, an application that
+bundles the SDK from this repository's source must use bun 1.4.2 or later; bun 1.3 emits a
+`kansoku-js` bundle without `createKansoku`
+([BUG-1](../bug-reports/bun-1-3-drops-entry-named-reexports.md)). In a Vite or other bundled
+browser application, initialise after setting the page title:
 
 ```typescript
 import { createKansoku } from "kansoku-js"

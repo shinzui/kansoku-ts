@@ -66,8 +66,10 @@ same build script under bun 1.3.13 and see it refuse to start.
   the 604-byte 1.3.13 bundle with `bundle cannot be imported: "K" is not declared in this file;
   "j" is not declared in this file` (exit 1); `just test` (90 pass, 0 fail) and `just typecheck`
   pass.
-- [ ] M2: `just check` runs the kansoku-js package smoke; the README, getting-started guide and
-  ADR-6 state the bun floor; BUG-1 is `fixed`; `just ci` passes.
+- [x] M2: `just check` runs the kansoku-js package smoke; the README, getting-started guide and
+  ADR-6 state the bun floor; BUG-1 is `fixed`; `just ci` passes. Accepted 2026-10-20: `just ci`
+  exits 0 with `exports: 14 verified`, `exports: 10 verified`, `accepted: 3`, 90 + 2 tests
+  passing, and strict validation `OK: 8 concepts` (ADRs) and `OK: 1 concepts` (bug reports).
 
 
 ## Surprises & Discoveries
@@ -77,7 +79,11 @@ this plan began: `oxfmt --check .` reports `docs/bug-reports/bun-1-3-drops-entry
 `docs/bug-reports/index.md`, `docs/bug-reports/log.md` and
 `docs/guides/instrument-before-server-ready.md`. Milestone 2 requires `just ci` to pass, so it
 formats those files with `oxfmt --write` and reruns `just bug-report-check` to confirm the
-formatted bug-report bundle still validates.
+formatted bug-report bundle still validates. Done in a separate `style(docs)` commit.
+
+`okf log add` rewrites the whole `log.md` with `*` bullets, which `oxfmt --check` rejects, and
+warns `concept not found` for an `ADR-6` or `BUG-1` argument while still writing the bundle log.
+Run `oxfmt --write` on the log after every `okf log add`; validation passes either way.
 
 bun reports the BUG-1 bundle's import failure as the per-binding messages `"K" is not declared
 in this file; "j" is not declared in this file`, so `describe` in `scripts/verify-bundle.ts`
@@ -122,7 +128,18 @@ unwraps `AggregateError.errors`.
 
 ## Outcomes & Retrospective
 
-(To be filled during and after implementation.)
+Complete on 2026-10-20. The build can no longer report success for an SDK bundle that does not
+reproduce its source exports: it refuses bun older than 1.4.2 before touching `dist`, and under a
+supported bun it imports each bundle and compares exports by name and `typeof`. `just check` also
+delivers events from the built kansoku-js bundle to a stub server. The bun floor is stated in the
+root `package.json`, the README, the getting-started guide and ADR-6, which carries the durable
+decision, and BUG-1 is `fixed` with `fixedVersion: unreleased`.
+
+The remaining gap is that a bundle broken by a future bun regression is caught only by the
+export comparison and the kansoku-js smoke; a semantic defect that keeps every export name and
+type intact would still pass `just check` and is left to `just test-smoke` and the live
+conformance tests. The intranet consumer in `mori://tan/tan-ng-labs` can drop its wrapper-entry
+workaround once it bundles with bun 1.4.2 or later; that change belongs to that repository.
 
 
 ## Context and Orientation

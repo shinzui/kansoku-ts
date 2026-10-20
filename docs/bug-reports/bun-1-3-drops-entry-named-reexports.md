@@ -6,7 +6,15 @@ generated:
   by: process:claude-code
   at: "2026-10-20T21:15:00Z"
 bugId: BUG-1
-status: reported
+status: fixed
+fixedVersion: unreleased
+resolution: >-
+  This repository requires bun 1.4.2 or later, which bundles the entry correctly: the root
+  package.json declares engines.bun >=1.4.2, scripts/build.ts refuses older bun and verifies
+  each bundle's runtime exports against its source entry before reporting success, and `just
+  check` runs the kansoku-js package smoke against dist/index.js
+  (docs/plans/9-guard-sdk-builds-against-incomplete-bundles-and-require-bun-1-4-2.md). Older
+  bun is not supported, so src/index.ts keeps its named re-exports.
 severity: degraded
 workaround: >-
   Build with bun 1.4.2, the version this repository's `nix develop` shell provides, which

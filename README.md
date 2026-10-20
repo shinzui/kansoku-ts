@@ -25,4 +25,8 @@ and `just test-live` for opt-in server conformance. Optional local runs skip liv
 `KANSOKU_REQUIRE_LIVE=1 just test-live` requires the server and both credentials and permits no
 feature skips. The joint server gate also requires real protocol and Chromium checks.
 
+Building requires bun 1.4.2 or later, which `nix develop` provides. `scripts/build.ts` refuses
+older versions, which drop the SDK entry's named re-exports
+([BUG-1](docs/bug-reports/bun-1-3-drops-entry-named-reexports.md)).
+
 [Cross-origin identity and shared properties](docs/guides/cross-origin-identity.md).

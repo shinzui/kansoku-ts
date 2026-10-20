@@ -37,10 +37,14 @@ lint-fix:
     oxlint --fix
 
 # Run all checks: typecheck, lint, and formatting
-check: typecheck lint format-check ssr-smoke check-contracts check-packages check-size adr-check bug-report-check
+check: typecheck lint format-check ssr-smoke package-smoke check-contracts check-packages check-size adr-check bug-report-check
 
 ssr-smoke:
     bun scripts/ssr-smoke.ts
+
+# Deliver events from the built kansoku-js bundle to a local stub server
+package-smoke: build
+    bun packages/kansoku-js/scripts/smoke.ts
 
 build:
     bun scripts/build.ts packages/kansoku-js

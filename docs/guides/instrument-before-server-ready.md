@@ -48,6 +48,7 @@ In React, pass that same client to the provider. Existing hooks work with either
 
 ```tsx
 import { KansokuProvider, useTrack } from "kansoku-react"
+
 import { analytics } from "./analytics.js"
 
 function CheckoutButton() {

@@ -44,9 +44,9 @@ reproduction:
   - "Check out 33d6ab8 (or df1269a) and obtain bun 1.3.13 (for example `nix shell --inputs-from <a checkout of mori://shinzui/kansoku> nixpkgs#bun`); `bun --version` prints 1.3.13."
   - "Run `bun build packages/kansoku-js/src/index.ts --target=browser --format=esm --minify --outfile=/tmp/kansoku.js`."
   - "Observe `Bundled 4 modules` and a 604-byte file ending in `export{K as version,j as createKansoku,...}`; `grep -c function /tmp/kansoku.js` prints 0."
-  - "Run `node --input-type=module -e 'await import(\"/tmp/kansoku.js\")'`; observe `SyntaxError: Export 'K' is not defined in module`."
+  - 'Run `node --input-type=module -e ''await import("/tmp/kansoku.js")''`; observe `SyntaxError: Export ''K'' is not defined in module`.'
   - "Run `bun scripts/build.ts packages/kansoku-js`; observe the success line `kansoku-js: dist/index.js, ...` and a 684-byte dist/index.js of the same shape."
-  - "Delete the \"sideEffects\" key from packages/kansoku-js/package.json and repeat step 2; observe a 22,909-byte bundle that imports with createKansoku as a function. Restore the file and repeat step 2 under `nix develop` (bun 1.4.2); observe `Bundled 24 modules` and 22,912 bytes."
+  - 'Delete the "sideEffects" key from packages/kansoku-js/package.json and repeat step 2; observe a 22,909-byte bundle that imports with createKansoku as a function. Restore the file and repeat step 2 under `nix develop` (bun 1.4.2); observe `Bundled 24 modules` and 22,912 bytes.'
 reviews:
   - kind: model
     reviewer: process:claude-code
@@ -73,7 +73,6 @@ which hosts the SDK first-party on the Nagare intranet from source at
 `packages/kansoku-js/package.json` are unchanged at `df1269a`, the default branch head on
 2026-10-20.
 
-
 ## What happens
 
 `packages/kansoku-js/src/index.ts` is four re-exports: `export { version } from
@@ -95,19 +94,18 @@ dist/index.d.ts` and exits 0. Node refuses the module with `SyntaxError: Export 
 defined in module`; bun throws an AggregateError. bun 1.4.2 bundles 24 modules into 22,912
 bytes from the same tree.
 
-| bun | entry | `sideEffects` | result |
-| --- | --- | --- | --- |
-| 1.3.13 CLI, `--minify` | `src/index.ts` | `false` | 604 bytes, exports undefined |
-| 1.3.13 CLI, no minify | `src/index.ts` | `false` | 1,327 bytes, exports undefined |
-| 1.3.13 `scripts/build.ts` (`Bun.build`) | `src/index.ts` | `false` | 684 bytes, exports undefined, exit 0 |
-| 1.3.13 CLI | `src/index.ts` | key removed | 22,909 bytes, correct |
-| 1.3.13 CLI | wrapper `export * from ".../src/index.ts"` | `false` | 22,909 bytes, correct, 14 exports |
-| 1.3.13 CLI | entry importing then re-exporting `createKansoku` | `false` | 604 bytes, exports undefined |
-| 1.3.13 CLI | `export { createKansoku } from "./client.ts"` (`.ts` or no suffix) | `false` | 604 bytes, exports undefined |
-| 1.3.13 CLI | `src/client.ts` | `false` | 47,244 bytes, correct |
-| 1.4.2 CLI, `--minify` | `src/index.ts` | `false` | 22,912 bytes, correct, 24 modules |
-| 1.4.2 `scripts/build.ts` | `src/index.ts` | `false` | 22,992 bytes, correct |
-
+| bun                                     | entry                                                              | `sideEffects` | result                               |
+| --------------------------------------- | ------------------------------------------------------------------ | ------------- | ------------------------------------ |
+| 1.3.13 CLI, `--minify`                  | `src/index.ts`                                                     | `false`       | 604 bytes, exports undefined         |
+| 1.3.13 CLI, no minify                   | `src/index.ts`                                                     | `false`       | 1,327 bytes, exports undefined       |
+| 1.3.13 `scripts/build.ts` (`Bun.build`) | `src/index.ts`                                                     | `false`       | 684 bytes, exports undefined, exit 0 |
+| 1.3.13 CLI                              | `src/index.ts`                                                     | key removed   | 22,909 bytes, correct                |
+| 1.3.13 CLI                              | wrapper `export * from ".../src/index.ts"`                         | `false`       | 22,909 bytes, correct, 14 exports    |
+| 1.3.13 CLI                              | entry importing then re-exporting `createKansoku`                  | `false`       | 604 bytes, exports undefined         |
+| 1.3.13 CLI                              | `export { createKansoku } from "./client.ts"` (`.ts` or no suffix) | `false`       | 604 bytes, exports undefined         |
+| 1.3.13 CLI                              | `src/client.ts`                                                    | `false`       | 47,244 bytes, correct                |
+| 1.4.2 CLI, `--minify`                   | `src/index.ts`                                                     | `false`       | 22,912 bytes, correct, 24 modules    |
+| 1.4.2 `scripts/build.ts`                | `src/index.ts`                                                     | `false`       | 22,992 bytes, correct                |
 
 ## Why it matters
 
@@ -123,7 +121,6 @@ bytes from the same tree.
   from the pinned source with the bun of `mori://shinzui/kansoku`'s nixpkgs, which is 1.3.13,
   and shipped a 604-byte `kansoku.js` on the first attempt.
 
-
 ## Analysis
 
 - The trigger is the combination of `"sideEffects": false` and named `export { x } from`
@@ -138,7 +135,6 @@ bytes from the same tree.
   [oven-sh/bun#5344](https://github.com/oven-sh/bun/issues/5344) (2023, duplicated exports
   when one entry re-exports another), a different symptom.
 
-
 ## Suggested fixes, for the owner to decide
 
 1. Make the build refuse an incomplete bundle whatever bun produced it: run
@@ -150,7 +146,6 @@ bytes from the same tree.
 3. Optionally make `index.ts` robust to older bundlers: define or import the public bindings
    in the entry and export them, or re-export with `export *`, instead of bare
    `export { name } from` statements under `"sideEffects": false`.
-
 
 ## Workaround
 

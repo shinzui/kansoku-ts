@@ -37,7 +37,7 @@ lint-fix:
     oxlint --fix
 
 # Run all checks: typecheck, lint, and formatting
-check: typecheck lint format-check ssr-smoke check-contracts check-packages check-size adr-check
+check: typecheck lint format-check ssr-smoke check-contracts check-packages check-size adr-check bug-report-check
 
 ssr-smoke:
     bun scripts/ssr-smoke.ts
@@ -71,7 +71,16 @@ adr-check:
       nix run github:shinzui/okf/beb89ab3bcbb705276397060d95f5580f72fbe83#okf-cli -- validate docs/adr --strict --profile docs/adr/profile.dhall --profile-enforce --log-enforce
     fi
 
-ci: install-frozen check test build check-contracts adr-check
+bug-report-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if command -v okf >/dev/null; then
+      okf validate docs/bug-reports --strict --profile docs/bug-reports/profile.dhall --profile-enforce --log-enforce
+    else
+      nix run github:shinzui/okf/beb89ab3bcbb705276397060d95f5580f72fbe83#okf-cli -- validate docs/bug-reports --strict --profile docs/bug-reports/profile.dhall --profile-enforce --log-enforce
+    fi
+
+ci: install-frozen check test build check-contracts adr-check bug-report-check
 
 dev-vanilla: build
     bun run --cwd examples/vanilla-vite dev

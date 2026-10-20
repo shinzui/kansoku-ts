@@ -57,6 +57,14 @@ in  Schema.Project::{
         , profile = Some "docs/adr/profile.dhall"
         , description = Some "Durable architecture decisions for the Kansoku browser SDKs"
         }
+      , Schema.OkfBundle::{
+        , name = "bug-reports"
+        , path = "docs/bug-reports"
+        , okfVersion = "0.2"
+        , profile = Some "docs/bug-reports/profile.dhall"
+        , description = Some
+            "Defects in behavior the Kansoku browser SDKs already provide, one reproduction per report"
+        }
       ]
     , dependencies = [ "shinzui/kansoku", "openapi-ts/openapi-typescript" ]
     }

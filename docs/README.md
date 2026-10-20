@@ -1,6 +1,7 @@
 # Kansoku browser SDKs
 
 - [Get started](guides/getting-started.md)
+- [Instrument before the server is ready](guides/instrument-before-server-ready.md)
 - [React](guides/react.md)
 - [Delivery and privacy](guides/delivery-and-privacy.md)
 - [kansoku-js API](../packages/kansoku-js/README.md)

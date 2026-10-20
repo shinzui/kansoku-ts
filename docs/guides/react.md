@@ -4,6 +4,9 @@ Use `just dev-react` for the workspace example after filling in its `.env.local`
 `.env.example`. It runs React StrictMode and React Router against built package exports.
 After publication, install `kansoku-js`, `kansoku-react` and `react` in your application.
 
+To add instrumentation while your server is still being prepared, use a
+[no-op client](instrument-before-server-ready.md).
+
 ```tsx
 import { KansokuProvider, useTrack, useIdentify, useExperiment } from "kansoku-react"
 

@@ -10,6 +10,12 @@ provenance:
     model: "claude-opus-5-5"
     harness: "claude-code"
     at: 2026-10-20T23:28:08Z
+  revisions:
+    - model: "claude-opus-5-5"
+      harness: "claude-code"
+      at: 2026-10-20T23:33:35Z
+      mode: "implement"
+      note: "Milestone 1 implemented: bun floor and bundle export verification"
 ---
 
 # Guard SDK builds against incomplete bundles and require bun 1.4.2
@@ -52,16 +58,30 @@ same build script under bun 1.3.13 and see it refuse to start.
 
 ## Progress
 
-- [ ] M1: `scripts/build.ts` refuses bun older than the root `package.json` `engines.bun` range
+- [x] M1: `scripts/build.ts` refuses bun older than the root `package.json` `engines.bun` range
   (`>=1.4.2`) and verifies every bundle's export surface against its source entry; the verifier
-  has unit tests and rejects the real bun 1.3.13 artifact.
+  has unit tests and rejects the real bun 1.3.13 artifact. Accepted 2026-10-20: five verifier
+  cases pass; `just build` prints `exports: 14 verified` and `exports: 10 verified`; bun 1.3.13
+  is refused with exit 1 and `dist/index.js` keeps its modification time; the verifier rejects
+  the 604-byte 1.3.13 bundle with `bundle cannot be imported: "K" is not declared in this file;
+  "j" is not declared in this file` (exit 1); `just test` (90 pass, 0 fail) and `just typecheck`
+  pass.
 - [ ] M2: `just check` runs the kansoku-js package smoke; the README, getting-started guide and
   ADR-6 state the bun floor; BUG-1 is `fixed`; `just ci` passes.
 
 
 ## Surprises & Discoveries
 
-(None yet.)
+`just format-check`, and therefore `just check` and `just ci`, already failed at `0c94d9f` before
+this plan began: `oxfmt --check .` reports `docs/bug-reports/bun-1-3-drops-entry-named-reexports.md`,
+`docs/bug-reports/index.md`, `docs/bug-reports/log.md` and
+`docs/guides/instrument-before-server-ready.md`. Milestone 2 requires `just ci` to pass, so it
+formats those files with `oxfmt --write` and reruns `just bug-report-check` to confirm the
+formatted bug-report bundle still validates.
+
+bun reports the BUG-1 bundle's import failure as the per-binding messages `"K" is not declared
+in this file; "j" is not declared in this file`, so `describe` in `scripts/verify-bundle.ts`
+unwraps `AggregateError.errors`.
 
 
 ## Decision Log

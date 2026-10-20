@@ -27,5 +27,8 @@
     "openapi-typescript": "^7.13.0",
     "publint": "0.3.25",
     "typescript": "^5.9"
+  },
+  "engines": {
+    "bun": ">=1.4.2"
   }
 }

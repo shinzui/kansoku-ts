@@ -95,7 +95,15 @@ allows reusing a version number).
     signatures.
   - [ ] Item 5: register trusted publishers (user `shinzui`, repository `kansoku-ts`,
     workflow `release.yml`, no environment) for both packages, then set
-    `KANSOKU_RELEASE_ENABLED=true`. Cross-repository handoff list still to be written.
+    `KANSOKU_RELEASE_ENABLED=true`.
+  - (2026-11-06) `KANSOKU_RELEASE_ENABLED=true` set; with no pending changeset the release job
+    is a no-op publish. Item 5 is deferred to just before the next release: npm expires a
+    trusted-publisher configuration that has no successful publish within 2 days, and
+    `npm trust` refuses the maintainer's 2FA-bypass granular token (403). Run, logged in
+    interactively with account 2FA, `npm trust github <pkg> --file release.yml --repo
+    shinzui/kansoku-ts --allow-publish` for both packages (dry run verified), then merge the
+    Version Packages PR within 2 days.
+  - (2026-11-06) Cross-repository handoff list recorded in Outcomes & Retrospective.
 
 
 ## Surprises & Discoveries
@@ -175,7 +183,16 @@ Changesets Action latest is v2.1.2 and its inputs differ from the plan’s v1 sk
 
 ## Outcomes & Retrospective
 
-Both packages pass publint and attw packed checks, publish dry runs, a broken-export negative probe, and installation/import from tarballs in a scratch consumer (npm installed the tarballs; both Bun and Node imported them). Changesets lists both packages for 0.1.0 from the fixed group. Guides and package references are registered in Mori. Durable context is covered by ADR-1 (contracts), ADR-2 (delivery/lifecycle), ADR-3 (identity/session), ADR-6 (two packages/ESM) and ADR-7 (lockstep/trusted publishing), plus capture and React boundary ADRs. Both packages are licensed MIT (2026-11-06) and the GitHub repository is public, so automatic provenance applies. Nothing has been published. Exact pinned-server execution, bootstrap/trusted publisher setup and explicit publish authorization remain release preconditions.
+Both packages pass publint and attw packed checks, publish dry runs, a broken-export negative probe, and installation/import from tarballs in a scratch consumer (npm installed the tarballs; both Bun and Node imported them). Changesets lists both packages for 0.1.0 from the fixed group. Guides and package references are registered in Mori. Durable context is covered by ADR-1 (contracts), ADR-2 (delivery/lifecycle), ADR-3 (identity/session), ADR-6 (two packages/ESM) and ADR-7 (lockstep/trusted publishing), plus capture and React boundary ADRs. Both packages are licensed MIT (2026-11-06) and the GitHub repository is public, so automatic provenance applies. `kansoku-js@0.1.0` and `kansoku-react@0.1.0` were bootstrap-published on 2026-11-06 and verified from clean npm and Bun consumers: the scratch smoke prints `0.1.0 function function` and Node 22.23.3 `require('kansoku-js')` prints `0.1.0`. Only trusted-publisher registration remains (Progress, M4 item 5).
+
+Cross-repository handoff list for the server maintainers of `mori://shinzui/kansoku` (its docs are not registered in Mori, so artifact-level URIs are pending; paths are project-relative). Checked against that repository at c77ebba:
+
+- `docs/initial-spec.md`, "Current Components": it still says "A browser SDK, React SDK, and dashboard UI have not shipped". Replace it with the two npm packages (https://www.npmjs.com/package/kansoku-js, https://www.npmjs.com/package/kansoku-react) and keep only the dashboard UI as not shipped.
+- `docs/guides/haskell-sdk.md`, "Browser, React, and other language SDKs are not yet shipped": say browser and React SDKs ship as `kansoku-js` and `kansoku-react` and link `mori://shinzui/kansoku-ts/docs/getting-started`.
+- `docs/guides/send-events.md`, the web vitals section: "Explicit opt-in capture is planned separately" is now shipped in `kansoku-js@0.1.0` (`mori://shinzui/kansoku-ts/plans/7-capture-client-errors-and-web-vitals-with-explicit-opt-in`). Point browser producers at the SDK before the raw HTTP recipe.
+- `README.md` already describes both packages. Add the install command `npm install kansoku-js kansoku-react`.
+
+The two improvement requests this plan originally listed are no longer needed. Client clock skew is corrected server-side by `mori://shinzui/kansoku/plans/29-correct-client-timestamp-skew-and-count-ingest-rejections`, and beacon delivery is served by `mori://shinzui/kansoku/plans/39-beacon-ingest-route-for-page-exit-delivery`, both Complete and consumed by `mori://shinzui/kansoku-ts/plans/8-serve-kansoku-masterplan-5-sentat-beacon-exit-flush-bot-flag-and-identifyonce`.
 
 
 ## Context and Orientation

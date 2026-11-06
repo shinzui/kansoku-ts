@@ -53,7 +53,7 @@ start capture.
 
 - [x] Milestone 1 (2026-11-06; error suite and combined 104-test suite pass; `just check` passes with entry 10232 bytes gzip): Independently opt-in error capture emits bounded sanitized errors, deduplicates repeated delivery, and enforces finite rates and bounded per-error work through the shared privacy/delivery path, inside the entry bundle budget.
 - [x] Milestone 2 (2026-11-06; deterministic lifecycle/privacy tests and Chromium navigation proof pass; measurement file 3613 bytes gzip): Independently opt-in vital capture loads its measurement code on demand, emits at most one final sample per supported metric per measured page view with correct units, and delivers exit-time samples in the exit request under the documented finalization policy.
-- [ ] Milestone 3: Real-browser/public-server evidence, SSR and React lifecycle tests, documentation and ADR updates prove the complete optional behavior without changing defaults.
+- [x] Milestone 3 (2026-11-06; full owned acceptance plus final-candidate ten live, two real-server example and eight identity-browser cases pass with zero skips; local 104 tests, three SSR and three browser cases pass; docs and ADRs updated): Real-browser/public-server evidence, SSR and React lifecycle tests, documentation and ADR updates prove the complete optional behavior without changing defaults.
 
 ## Surprises & Discoveries
 
@@ -128,8 +128,8 @@ with no shared runtime chunk. `just check` measured 10232 bytes gzip for the ent
 and 3613 for measurement code (5120 budget). This leaves little entry headroom; future changes
 must continue measuring the built artifact. The complete local suite reports 104 passing cases
 plus three SSR cases; real browser smoke reports three passing cases. The full owned server harness passed ten live cases, two live browser examples, eight identity
-browser cases and six beacon cases with zero required skips. A focused rerun is checking the
-final expanded scheme-URL sanitizer and shared copied-envelope helper. FRIC-1 records and resolves the shared-test
+browser cases and six beacon cases with zero required skips. The focused final-candidate rerun also passed all required live and browser gates after the
+expanded scheme-URL sanitizer and shared copied-envelope helper landed in 8d232da. FRIC-1 records and resolves the shared-test
 helper cleanup issue; it did not alter capture behavior.
 
 ## Decision Log
@@ -204,16 +204,50 @@ the server's `prop:message` grouping useful.
 ## Outcomes & Retrospective
 
 
-Milestones 1 and 2 implement both optional paths and prove their local/browser behavior. The
-contract refresh is committed as f199e23. The full owned server acceptance passed; a focused final-candidate live/browser rerun remains,
-so Milestone 3 stays open until that evidence completes. ADR-4 and ADR-6 now preserve the durable privacy, lifecycle and
-packaging decisions. FRIC-1 is resolved by explicit cleanup hooks in the new capture suites.
+All three milestones are complete. Both optional features remain disabled by default and use
+the shared queue, privacy and delivery path. The entry is 10232 bytes gzip against 10240, the
+measurement file is 3613 against 5120, and the React entry is 1550 against 3072. The contract
+refresh is f199e23, the feature is cdd62e8, and the final sanitizer/envelope refinement is
+8d232da. Server gate and summary changes are commits 808bac3 and c77ebba in
+`mori://shinzui/kansoku`.
+
+Final local acceptance passed `nix develop -c just check`, `nix develop -c just test` (104
+browser-environment cases and three separate SSR cases), and the three mock-based Playwright
+cases. The full owned server `just acceptance` exited zero, including ten required live SDK
+cases, two live example cases, eight identity-browser cases, six beacon cases, three protocol
+cases, native server tests and public workflow checks. After the final source refinement, the
+owned `scripts/identity_browser_acceptance.py` entry point independently repeated the ten live,
+two example, eight identity-browser and three protocol cases successfully; the mock-based
+browser file also passed again. Missing live prerequisites remain failures in required mode.
+
+The owned runs were launched in the checkout of `mori://shinzui/kansoku`, with
+`KANSOKU_SDK_PROJECT` set to this checkout and `KANSOKU_REQUIRE_SDK=1`:
+
+```bash
+nix develop -c just acceptance
+nix develop -c python3 scripts/identity_browser_acceptance.py
+```
+
+Evidence belongs to `mori://shinzui/kansoku`: project-relative directories
+`.dev/acceptance/run-062ns17n/` and `.dev/acceptance/identity-browser-n4kb71v7/` retain private
+run artifacts and sanitized summaries (artifact-level URI pending). The full run had loaded
+its summary template before c77ebba corrected its old nine-case prose; the actual checked live
+gate and final focused run both report ten passing cases. No credentials are included here.
+
+The prototype confirmed that finalizing observed values in the core exit hook reaches the exit
+batch even when pagehide precedes visibilitychange. Its values matched the library's final
+callbacks for the exercised page; browser entries still undelivered at exit remain the documented
+limit. ADR-4 and ADR-6 preserve the durable bounded-work, attribution, privacy, observer lifetime,
+engagement and packaging choices. The entry has eight bytes of budget headroom, so future changes
+must measure the artifact. FRIC-1 is resolved by explicit per-file cleanup hooks; there are no
+remaining logged entries for this plan. No authorized implementation or validation work remains.
+
 
 ## Context and Orientation
 
 
-`packages/kansoku-js/src/types.ts` defines `KansokuOptions.autocapture` (currently `pageViews`,
-`sessions` and `pageLeave`). `packages/kansoku-js/src/client.ts` resolves defaults in
+`packages/kansoku-js/src/types.ts` defines `KansokuOptions.autocapture`: `pageViews`,
+`sessions`, `pageLeave` and the two optional flags implemented here. `packages/kansoku-js/src/client.ts` resolves defaults in
 `resolveOptions` and owns the `start`/`stop` installers registered through `onStart`, privacy
 suppression, `beforeSend`, envelope construction and enqueue. In the same file `createKansoku`
 keeps `pageSnapshot`, the envelope of the last successfully enqueued page view, and `leavePage`
@@ -236,10 +270,10 @@ a session to report an old view, and keeps browser globals out of imports.
 [ADR-5](../adr/0005-react-binding-boundary.md) delegates all delivery and deduplication to the
 core; React StrictMode repeats setup/cleanup and must not duplicate reports.
 [ADR-6](../adr/0006-two-browser-packages-and-esm-distribution.md) gives both packages no runtime
-dependencies, one minified ESM bundle each, and gzip budgets of 10 KiB for `kansoku-js` and 3 KiB
+dependencies, a minified ESM entry per package plus the browser measurement file, and gzip budgets of 10 KiB for `kansoku-js` and 3 KiB
 for `kansoku-react`, enforced by `scripts/check-size.ts` inside `just check`. `scripts/build.ts`
 bundles everything not listed under a package's `dependencies` or `peerDependencies` and names
-its single output `index.js`. Read `docs/guides/delivery-and-privacy.md` when changing this
+its entry output `index.js`; the completed build enables splitting for the browser package. Read `docs/guides/delivery-and-privacy.md` when changing this
 boundary.
 
 Terms used below. A logical page view is one successful `client.page()` call, automatic or
@@ -255,12 +289,12 @@ asks it to. A `PerformanceObserver` is the browser API that delivers timing entr
 asynchronously; its `buffered` option replays entries recorded before the observer existed.
 
 The published contracts are owned by `mori://shinzui/kansoku`. `contracts/KANSOKU_COMMIT`
-currently pins e18b4f4, which predates both events. Commit 021ec1a on that project's `master`
-publishes them in catalog version 5. Sync its generated event/OpenAPI artifacts through
+now pins 021ec1a9fda09214ced5c0c237db8d93e42b8042, which publishes both events in catalog version 5.
+The starting pin e18b4f4 predated them. Sync its generated event/OpenAPI artifacts through
 `scripts/sync-contracts.ts` and regenerate types with `just generate-schema`. The new pin spans
 nine server contract commits, not only these two events: the OpenAPI document grows by about
 3,400 lines and the catalog version moves from 4 to 5, which
-`packages/kansoku-js/test/contract.test.ts` currently asserts as 4. `client_error` v1
+`packages/kansoku-js/test/contract.test.ts` now asserts as 5. `client_error` v1
 requires message (1–256 Unicode code points), type (1–128 code points) and Boolean handled.
 Never send stack traces or personal data. False means uncaught error or unhandled rejection.
 `web_vital` v1 requires metric exactly LCP, INP, CLS, FCP or TTFB and nonnegative numeric value.
@@ -298,8 +332,8 @@ cannot run in `test/live`; the Playwright file is where a real browser reaches a
 pointing at this checkout and `KANSOKU_REQUIRE_SDK=1`, starts disposable stores and a packaged
 server and supplies credentials privately. Its `scripts/identity_browser_acceptance.py` runs
 this SDK's whole `test/live` directory and the single file `test/smoke/live-examples.pw.ts` in
-required mode and asserts exact totals: nine passing live cases and two passing live examples,
-with no skips. Any case added here changes those totals.
+required mode and asserts exact totals: ten passing live cases and two passing live examples,
+with no skips, after this plan's coordinated update. Any additional case changes those totals.
 
 ## Plan of Work
 

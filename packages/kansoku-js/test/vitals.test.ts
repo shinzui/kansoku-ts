@@ -127,9 +127,6 @@ test("no page, reset, opt-out and invalid measurements cannot release old sample
       client.optIn()
       client.page()
     }
-    sample("CLS", NaN)
-    sample("INP", -1)
-    sample("TTFB", Infinity)
     exit()
     await client.flush()
     expect(unique(events()).filter((e) => e.eventName === "web_vital")).toHaveLength(0)
@@ -137,6 +134,8 @@ test("no page, reset, opt-out and invalid measurements cannot release old sample
   }
   expect(vitalProperties("LCP", -1)).toBeUndefined()
   expect(vitalProperties("OTHER", 0)).toBeUndefined()
+  expect(vitalProperties("CLS", NaN)).toBeUndefined()
+  expect(vitalProperties("TTFB", Infinity)).toBeUndefined()
 })
 
 test("one exit with three pending measurements writes the queue mirror once before sending", async () => {

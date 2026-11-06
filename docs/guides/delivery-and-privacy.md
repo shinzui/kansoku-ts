@@ -100,7 +100,7 @@ captures failed resource loads, worker errors or errors in other frames. It send
 `message` and `handled: false`. Values with string `name` and `message` fields are treated as
 error-like; other rejected values receive fixed labels without being serialized. Type labels
 must be short identifiers (at most 128 code points). Messages scan only the first 1024 UTF-16
-code units, keep the first line, replace HTTP URLs, email-like text, long numbers and hexadecimal
+code units, keep the first line, replace scheme URLs (including HTTP, FTP and file URLs), email-like text, long numbers and hexadecimal
 identifiers with placeholders, collapse whitespace, and retain at most 256 Unicode code points.
 Sanitizing is deliberately conservative and cannot recognize all personal data; inspect or drop
 labels, page URLs and context with `beforeSend` for your application.

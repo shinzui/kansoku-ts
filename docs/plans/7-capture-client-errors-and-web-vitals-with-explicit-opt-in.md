@@ -51,7 +51,7 @@ start capture.
 ## Progress
 
 
-- [x] Milestone 1 (2026-11-06; error suite and combined 104-test suite pass; `just check` passes with entry 10230 bytes gzip): Independently opt-in error capture emits bounded sanitized errors, deduplicates repeated delivery, and enforces finite rates and bounded per-error work through the shared privacy/delivery path, inside the entry bundle budget.
+- [x] Milestone 1 (2026-11-06; error suite and combined 104-test suite pass; `just check` passes with entry 10232 bytes gzip): Independently opt-in error capture emits bounded sanitized errors, deduplicates repeated delivery, and enforces finite rates and bounded per-error work through the shared privacy/delivery path, inside the entry bundle budget.
 - [x] Milestone 2 (2026-11-06; deterministic lifecycle/privacy tests and Chromium navigation proof pass; measurement file 3613 bytes gzip): Independently opt-in vital capture loads its measurement code on demand, emits at most one final sample per supported metric per measured page view with correct units, and delivers exit-time samples in the exit request under the documented finalization policy.
 - [ ] Milestone 3: Real-browser/public-server evidence, SSR and React lifecycle tests, documentation and ADR updates prove the complete optional behavior without changing defaults.
 
@@ -124,11 +124,12 @@ asserts the batch received by the HTTP mock because Playwright's departing-page 
 omit the keepalive request. The default example never requests the measurement file.
 
 The build uses Bun ESM splitting, yielding exactly the entry and one `vitals-<hash>.js` file,
-with no shared runtime chunk. `just check` measured 10230 bytes gzip for the entry (10240 budget)
+with no shared runtime chunk. `just check` measured 10232 bytes gzip for the entry (10240 budget)
 and 3613 for measurement code (5120 budget). This leaves little entry headroom; future changes
 must continue measuring the built artifact. The complete local suite reports 104 passing cases
-plus three SSR cases; real browser smoke reports three passing cases. Required live evidence
-is still running under the owned server harness. FRIC-1 records and resolves the shared-test
+plus three SSR cases; real browser smoke reports three passing cases. The full owned server harness passed ten live cases, two live browser examples, eight identity
+browser cases and six beacon cases with zero required skips. A focused rerun is checking the
+final expanded scheme-URL sanitizer and shared copied-envelope helper. FRIC-1 records and resolves the shared-test
 helper cleanup issue; it did not alter capture behavior.
 
 ## Decision Log
@@ -204,8 +205,8 @@ the server's `prop:message` grouping useful.
 
 
 Milestones 1 and 2 implement both optional paths and prove their local/browser behavior. The
-contract refresh is committed as f199e23. Required server acceptance remains pending, so
-Milestone 3 remains open. ADR-4 and ADR-6 now preserve the durable privacy, lifecycle and
+contract refresh is committed as f199e23. The full owned server acceptance passed; a focused final-candidate live/browser rerun remains,
+so Milestone 3 stays open until that evidence completes. ADR-4 and ADR-6 now preserve the durable privacy, lifecycle and
 packaging decisions. FRIC-1 is resolved by explicit cleanup hooks in the new capture suites.
 
 ## Context and Orientation

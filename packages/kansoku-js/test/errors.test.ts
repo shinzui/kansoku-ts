@@ -127,6 +127,11 @@ test("labels bound Unicode and hostile inputs without reading stacks or serializ
     "Error",
   )
   expect(errorProperties(undefined, false, true).message).toBe("Script error.")
+  expect(
+    errorProperties(
+      new Error("ftp://private.test/person file:///Users/private/name www.private.test/path"),
+    ).message,
+  ).toBe("<url> <url> <url>")
 })
 
 test("resource failures are absent and arbitrary rejections have fixed labels", async () => {

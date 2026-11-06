@@ -525,16 +525,19 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
   const copy = (
     original: AnalyticsEvent,
     name: string,
-    properties: JsonObject,
-  ): AnalyticsEvent => ({
-    ...original,
-    eventId: randomId(),
-    eventName: name,
-    occurredAt: new Date(core.config.now()).toISOString(),
-    receivedAt: new Date(core.config.now()).toISOString(),
-    schemaVersion: 1,
-    properties,
-  })
+    properties: AnalyticsEvent["properties"],
+  ): AnalyticsEvent => {
+    const at = new Date(core.config.now()).toISOString()
+    return {
+      ...original,
+      eventId: randomId(),
+      eventName: name,
+      occurredAt: at,
+      receivedAt: at,
+      schemaVersion: 1,
+      properties,
+    }
+  }
   const errorPage = core.config.autocapture.clientErrors
     ? createErrorCapture(
         core,
@@ -557,17 +560,12 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
       return
     const original = pageSnapshot.event
     core.enqueueBuilt({
-      ...original,
-      eventId: randomId(),
-      eventName: "page_leave",
-      occurredAt: new Date(core.config.now()).toISOString(),
-      receivedAt: new Date(core.config.now()).toISOString(),
-      schemaVersion: core.config.schemaVersions.page_leave ?? 1,
-      properties: {
+      ...copy(original, "page_leave", {
         url: original.properties.url ?? "",
         path: original.properties.path ?? "",
         durationMs: Math.max(0, monotonic() - pageSnapshot.started),
-      },
+      }),
+      schemaVersion: core.config.schemaVersions.page_leave ?? 1,
     })
   }
   core.onExit(leavePage)

@@ -31,7 +31,7 @@ export function errorProperties(
         message =
           truncate(
             prefix
-              .replace(/(?:https?:\/\/|www\.)[^\s]+/gi, "<url>")
+              .replace(/\b(?:[a-z][a-z0-9+.-]{0,31}:\/\/|www\.)[^\s]+/gi, "<url>")
               .replace(/[^\s@]+@[^\s@]+/g, "<email>")
               .replace(/\b[0-9a-f]{16,}\b/gi, "<id>")
               .replace(/\d{6,}/g, "<number>")

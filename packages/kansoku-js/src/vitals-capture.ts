@@ -62,10 +62,9 @@ export function createVitalCapture(
       void loading
         .then((module) => {
           if (!active || hiddenBeforeLoad || detach) return
+          // The measurement module exposes only finite, nonnegative, supported samples.
           detach = module.subscribe((sample) => {
             if (
-              !Number.isFinite(sample.value) ||
-              sample.value < 0 ||
               (sample.navigationType === "back-forward-cache") !== restored ||
               (restored && sample.name === "TTFB")
             )

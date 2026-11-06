@@ -21,8 +21,24 @@ if (!baseUrl || !writeKey) {
     baseUrl,
     writeKey,
     sourceService: "vanilla-example",
+    autocapture: {
+      clientErrors: location.search.includes("capture=1"),
+      webVitals: location.search.includes("capture=1"),
+    },
     onDrop: (info) => console.warn("Kansoku dropped events", info),
   })
+  if (location.search.includes("capture=1")) {
+    const button = document.createElement("button")
+    button.textContent = "Throw error"
+    button.addEventListener("click", () => {
+      const until = performance.now() + 80
+      while (performance.now() < until) {
+        /* Exercise a real event-timing entry. */
+      }
+      throw new Error("Example failure https://private.test/user user@example.test 123456789")
+    })
+    app.append(button)
+  }
   const update = () => {
     app.querySelector("output")!.textContent = JSON.stringify(client.stats)
   }

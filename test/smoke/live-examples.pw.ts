@@ -38,7 +38,8 @@ async function metric(
 }
 
 test("vanilla browser example reaches real route metrics", async ({ page, request }) => {
-  await page.goto("/")
+  const baseline = await metric(request, "events", "event_name")
+  await page.goto("/?capture=1")
   await page.getByRole("link", { name: "Pricing", exact: true }).click()
   await page.waitForFunction(() =>
     JSON.parse(sessionStorage.getItem("kansoku.queue") ?? "[]").some(
@@ -57,6 +58,21 @@ test("vanilla browser example reaches real route metrics", async ({ page, reques
       async () => {
         const routes = await metric(request, "page-views", "route")
         return ["/", "/pricing", "/docs"].every((route) => (routes[route] ?? 0) >= 1)
+      },
+      { timeout: 15000, intervals: [500] },
+    )
+    .toBe(true)
+  await page.getByRole("button", { name: "Throw error", exact: true }).click()
+  await page.waitForTimeout(350)
+  await page.getByRole("button", { name: "Flush", exact: true }).click()
+  await page.goto("about:blank")
+  await expect
+    .poll(
+      async () => {
+        const events = await metric(request, "events", "event_name")
+        return ["client_error", "web_vital"].every(
+          (name) => (events[name] ?? 0) > (baseline[name] ?? 0),
+        )
       },
       { timeout: 15000, intervals: [500] },
     )

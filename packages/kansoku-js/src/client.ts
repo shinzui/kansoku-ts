@@ -5,6 +5,7 @@ import { validateEvent } from "./contract/validate.js"
 import type { AnalyticsEvent, JsonObject } from "./contract/wire.js"
 import { buildEvent, randomId } from "./envelope.js"
 import type { WebFields } from "./envelope.js"
+import { createErrorCapture } from "./errors.js"
 import { recordExposure } from "./experiment.js"
 import { consumeHandoff, linkTo } from "./handoff.js"
 import { createIdentityApi } from "./identity-api.js"
@@ -26,6 +27,7 @@ import type {
   TrackOptions,
 } from "./types.js"
 import { version } from "./version.js"
+import { createVitalCapture } from "./vitals-capture.js"
 
 const jsonBytesRaw = (body: string) => new TextEncoder().encode(body).byteLength
 
@@ -87,6 +89,8 @@ export function resolveOptions(options: KansokuOptions): ResolvedKansokuOptions 
       pageViews: true,
       sessions: true,
       pageLeave: true,
+      clientErrors: false,
+      webVitals: false,
       ...options.autocapture,
     }),
     schemaVersions: Object.freeze({
@@ -202,7 +206,7 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
       ids,
     )
   }
-  function enqueueBuilt(event: AnalyticsEvent): boolean {
+  function enqueueBuilt(event: AnalyticsEvent, save = true): boolean {
     if (suppressed()) {
       drop("opted_out", [event], terminal || closing ? "shutdown" : undefined)
       return false
@@ -244,8 +248,8 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
       drop("queue_full", [event])
       return false
     }
-    persist()
-    if (started && !exiting && queue.size >= config.flushAt) void flush()
+    if (save) persist()
+    if (save && started && !exiting && queue.size >= config.flushAt) void flush()
     return true
   }
   function boundEvent(
@@ -468,6 +472,12 @@ export function createInternalClient(options: KansokuOptions, deferStart = false
     getSessionId: currentSession,
     buildEvent: boundEvent,
     enqueueBuilt,
+    enqueueMany(events: AnalyticsEvent[]) {
+      let changed = false
+      for (const event of events) changed = enqueueBuilt(event, false) || changed
+      if (changed) persist()
+      if (changed && started && !exiting && queue.size >= config.flushAt) void flush()
+    },
     registerContextProvider(provider: () => JsonObject) {
       providers.add(provider)
       return () => {
@@ -512,6 +522,30 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
       (core.config.respectGlobalPrivacyControl && isGlobalPrivacyControlEnabled()),
   )
   let pageSnapshot: { event: AnalyticsEvent; started: number; left: boolean } | undefined
+  const copy = (
+    original: AnalyticsEvent,
+    name: string,
+    properties: JsonObject,
+  ): AnalyticsEvent => ({
+    ...original,
+    eventId: randomId(),
+    eventName: name,
+    occurredAt: new Date(core.config.now()).toISOString(),
+    receivedAt: new Date(core.config.now()).toISOString(),
+    schemaVersion: 1,
+    properties,
+  })
+  const errorPage = core.config.autocapture.clientErrors
+    ? createErrorCapture(
+        core,
+        () => {
+          if (pageSnapshot?.event.anonymousId !== core.getAnonymousId()) pageSnapshot = undefined
+          return pageSnapshot?.event
+        },
+        copy,
+      )
+    : undefined
+  const vitals = core.config.autocapture.webVitals ? createVitalCapture(core, copy) : undefined
   const monotonic = () => performance.now()
   const leavePage = () => {
     if (!pageSnapshot || pageSnapshot.left || core.config.autocapture.pageLeave === false) return
@@ -545,10 +579,17 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
     }
   })
   const optOut = core.optOut
-  const client: KansokuClient = Object.assign(core, createIdentityApi(core), {
+  const identityApi = createIdentityApi(core)
+  const client: KansokuClient = Object.assign(core, identityApi, {
+    reset() {
+      pageSnapshot = undefined
+      vitals?.retire()
+      identityApi.reset()
+    },
     linkTo: (url: string | URL) => linkTo(core, url),
     optOut() {
       pageSnapshot = undefined
+      vitals?.retire()
       optOut()
     },
     page(properties?: JsonObject, trackOptions?: TrackOptions) {
@@ -560,7 +601,11 @@ export function createKansoku(options: KansokuOptions): KansokuClient {
       }
       leavePage()
       const event = buildPageView(core, properties, trackOptions)
-      if (core.enqueueBuilt(event)) pageSnapshot = { event, started: monotonic(), left: false }
+      if (core.enqueueBuilt(event)) {
+        pageSnapshot = { event, started: monotonic(), left: false }
+        errorPage?.()
+        vitals?.page(event)
+      }
     },
     experiment(
       experiment: string,

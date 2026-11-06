@@ -5,6 +5,7 @@ const client = createKansoku({
   baseUrl: "http://localhost:0",
   writeKey: "ksk_w_test",
   storage: "memory",
+  autocapture: { clientErrors: true, webVitals: true },
   persistQueue: false,
   fetch: (async (_input, init) =>
     Response.json(

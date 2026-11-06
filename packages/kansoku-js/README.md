@@ -196,3 +196,16 @@ export interface ExperimentOptions {
   force?: boolean
 }
 ```
+
+### Optional browser diagnostics
+
+`autocapture.clientErrors` and `autocapture.webVitals` are independent Boolean options, both
+`false` by default. Set either to `true` to capture sanitized uncaught errors or document-scoped
+performance measurements through the usual queue and `beforeSend`. Errors are bounded to ten
+per recorded view and thirty per minute. Vitals load a separate measurement file on demand;
+FCP/TTFB report immediately and LCP/CLS/INP finalize once on exit. They describe the first page
+view of a document or BFCache restore, not later SPA routes. Reset/opt-out retire pending
+attribution. Both event types count as server engagement and can change bounce and duration
+reports. Read the [delivery and privacy guide](../../docs/guides/delivery-and-privacy.md#optional-client-errors-and-web-vitals)
+for sanitization, units, exclusions, lifecycle and privacy details. The vanilla example's
+`?capture=1` switch enables both and exposes a **Throw error** button.

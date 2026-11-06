@@ -67,3 +67,11 @@ Server rendering produces HTML without browser globals or network capture. Both 
 are ESM-only; Node 20.19+ (22.12+ on Node 22) supports `require(esm)`. Jest's default
 CommonJS mode needs both packages in its ESM transform allowlist or native ESM configuration.
 TypeScript consumers install compatible `@types/react` (an optional peer for JS consumers).
+
+The provider passes `options.autocapture.clientErrors` and `options.autocapture.webVitals` to
+the core unchanged. Both default to `false`. Explicitly enabling them captures sanitized errors
+and document-scoped vitals, including under StrictMode's repeated effect setup/cleanup. Vitals
+use a deferred measurement file and retain their first view's attribution across SPA routes.
+Both events count as server engagement; consider bounce/duration consequences before adoption.
+See the [delivery and privacy guide](../../docs/guides/delivery-and-privacy.md#optional-client-errors-and-web-vitals)
+for limits, finalization, privacy and unsupported measurements.

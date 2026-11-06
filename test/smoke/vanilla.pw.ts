@@ -10,6 +10,7 @@ test.skip(
 )
 
 let received: AnalyticsEvent[] = []
+let receivedBatches: AnalyticsEvent[][] = []
 let keys: Array<string | undefined> = []
 const server = createServer(async (request, response) => {
   response.setHeader("Access-Control-Allow-Origin", "*")
@@ -22,6 +23,7 @@ const server = createServer(async (request, response) => {
   const chunks: Buffer[] = []
   for await (const chunk of request) chunks.push(Buffer.from(chunk))
   const events = JSON.parse(Buffer.concat(chunks).toString()) as AnalyticsEvent[]
+  receivedBatches.push(events)
   received.push(...events)
   keys.push(request.headers["x-api-key"] as string | undefined)
   response
@@ -37,6 +39,7 @@ test.afterAll(async () => {
 })
 test.beforeEach(() => {
   received = []
+  receivedBatches = []
   keys = []
 })
 
@@ -99,6 +102,14 @@ test("vanilla SPA capture and an exit-only event survive navigation", async ({ p
   ).toBe(1)
   expect(keys.every((key) => key === "ksk_w_smoke")).toBe(true)
   expect(loads).toBe(2)
+  expect(received.some((e) => e.eventName === "client_error" || e.eventName === "web_vital")).toBe(
+    false,
+  )
+  expect(
+    await page.evaluate(() =>
+      performance.getEntriesByType("resource").some((e) => /vitals.*\.js/.test(e.name)),
+    ),
+  ).toBe(false)
 })
 
 test("React Router captures views, sign-in and one exposure per variant under StrictMode", async ({
@@ -127,4 +138,100 @@ test("React Router captures views, sign-in and one exposure per variant under St
       .map((event) => event.properties.path),
   ).toEqual(["/", "/pricing", "/account"])
   expect(received.filter((event) => event.eventName === "session_start")).toHaveLength(1)
+})
+
+test("optional capture delivers sanitized errors and final vitals in the navigation exit batch", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    for (const name of ["pagehide", "visibilitychange"])
+      addEventListener(name, () => {
+        sessionStorage.setItem(
+          "capture-transitions",
+          JSON.stringify([
+            ...JSON.parse(sessionStorage.getItem("capture-transitions") ?? "[]"),
+            name,
+          ]),
+        )
+      })
+  })
+  await page.goto("/?capture=1")
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        performance.getEntriesByType("resource").some((e) => /vitals-.*\.js/.test(e.name)),
+      ),
+    )
+    .toBe(true)
+  await page.getByRole("button", { name: "Flush", exact: true }).click()
+  await expect
+    .poll(() =>
+      received
+        .filter((e) => e.eventName === "web_vital")
+        .map((e) => e.properties.metric)
+        .sort(),
+    )
+    .toEqual(["FCP", "TTFB"])
+  await page.evaluate(async () => {
+    const url = performance
+      .getEntriesByType("resource")
+      .find((e) => /vitals-.*\.js/.test(e.name))!.name
+    const module = await import(/* @vite-ignore */ url)
+    module.subscribe((sample: { name: string; value: number }) => {
+      const final = JSON.parse(sessionStorage.getItem("capture-library-values") ?? "{}")
+      final[sample.name] = sample.value
+      sessionStorage.setItem("capture-library-values", JSON.stringify(final))
+    })
+  })
+  await page.getByRole("button", { name: "Throw error", exact: true }).click()
+  // Allow buffered event timing and the library's idle callback to settle.
+  await page.waitForTimeout(350)
+  await page.getByRole("button", { name: "Flush", exact: true }).click()
+  await expect.poll(() => received.filter((e) => e.eventName === "client_error").length).toBe(1)
+  const view = received.find((e) => e.eventName === "page_view")!
+  const error = received.find((e) => e.eventName === "client_error")!
+  expect(error.properties).toEqual({
+    message: "Example failure <url> <email> <number>",
+    type: "Error",
+    handled: false,
+  })
+  const before = receivedBatches.length
+  await page.route("**/capture-exit.html", (route) =>
+    route.fulfill({ contentType: "text/html", body: "<h1>Done</h1>" }),
+  )
+  await page.goto("/capture-exit.html")
+  const transitions = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("capture-transitions") ?? "[]"),
+  )
+  await expect
+    .poll(() =>
+      received
+        .filter((e) => e.eventName === "web_vital")
+        .map((e) => e.properties.metric)
+        .sort(),
+    )
+    .toEqual(["CLS", "FCP", "INP", "LCP", "TTFB"])
+  const exit = receivedBatches
+    .slice(before)
+    .flat()
+    .filter((e) => e.eventName === "web_vital")
+  expect(exit.map((e) => e.properties.metric).sort()).toEqual(["CLS", "INP", "LCP"])
+  expect(transitions).toEqual(["pagehide", "visibilitychange"])
+  const libraryValues = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("capture-library-values") ?? "{}"),
+  )
+  for (const sample of exit)
+    expect(sample.properties.value).toBe(libraryValues[sample.properties.metric as string])
+  for (const event of [error, ...received.filter((e) => e.eventName === "web_vital")]) {
+    expect(event).toMatchObject({
+      url: view.url,
+      sessionId: view.sessionId,
+      anonymousId: view.anonymousId,
+      schemaVersion: 1,
+    })
+  }
+  console.log(
+    "capture prototype:",
+    JSON.stringify({ transitions, exit: exit.map((e) => e.properties) }),
+  )
 })

@@ -37,7 +37,7 @@ lint-fix:
     oxlint --fix
 
 # Run all checks: typecheck, lint, and formatting
-check: typecheck lint format-check ssr-smoke package-smoke check-contracts check-packages check-size adr-check bug-report-check
+check: typecheck lint format-check ssr-smoke package-smoke check-contracts check-packages check-size adr-check bug-report-check friction-check
 
 ssr-smoke:
     bun scripts/ssr-smoke.ts
@@ -106,3 +106,7 @@ check-packages: build
 
 check-size: build
     bun scripts/check-size.ts
+
+# Enforce the plan friction bundle and its amendment log.
+friction-check:
+    okf validate docs/friction-log --strict --profile docs/friction-log/profile.dhall --profile-enforce --log-enforce

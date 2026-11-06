@@ -23,10 +23,11 @@ if (external.includes("react")) external.push("react/jsx-runtime")
 const banner: string | undefined = manifest.kansoku?.banner
 const result = await Bun.build({
   entrypoints: [resolve(directory, "src/index.ts")],
+  splitting: manifest.name === "kansoku-js",
   outdir: resolve(directory, "dist"),
   target: "browser",
   format: "esm",
-  naming: "index.js",
+  naming: { entry: "index.js", chunk: "[name]-[hash].js" },
   sourcemap: "linked",
   minify: true,
   external,

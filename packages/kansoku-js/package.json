@@ -17,7 +17,8 @@
   "files": [
     "dist",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "THIRD_PARTY_NOTICES"
   ],
   "type": "module",
   "sideEffects": false,
@@ -34,6 +35,9 @@
     "build": "bun ../../scripts/build.ts .",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
+  },
+  "devDependencies": {
+    "web-vitals": "6.2.3"
   },
   "engines": {
     "node": ">=20.19.0"

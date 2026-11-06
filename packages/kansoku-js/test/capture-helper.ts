@@ -5,9 +5,10 @@ import { createKansoku } from "../src/index.js"
 import type { AnalyticsEvent, DropInfo, KansokuClient, KansokuOptions } from "../src/types.js"
 
 const clients: KansokuClient[] = []
-afterEach(async () => {
+export async function cleanupCapture() {
   for (const client of clients.splice(0).reverse()) await client.shutdown()
-})
+}
+afterEach(cleanupCapture)
 export function fixture(options: Partial<KansokuOptions> = {}) {
   const mock = createFetchMock()
   const drops: DropInfo[] = []

@@ -65,6 +65,13 @@ in  Schema.Project::{
         , description = Some
             "Defects in behavior the Kansoku browser SDKs already provide, one reproduction per report"
         }
+      , Schema.OkfBundle::{
+        , name = "friction-log"
+        , path = "docs/friction-log"
+        , okfVersion = "0.2"
+        , profile = Some "docs/friction-log/profile.dhall"
+        , description = Some "Friction met while implementing plans, before triage"
+        }
       ]
     , dependencies = [ "shinzui/kansoku", "openapi-ts/openapi-typescript" ]
     }

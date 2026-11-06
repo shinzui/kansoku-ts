@@ -9,6 +9,8 @@ export const ALIAS = "alias"
 export const GROUP = "group"
 export const BUILT_IN_SCHEMA_VERSIONS: Readonly<Record<string, number>> = Object.freeze({
   [PAGE_VIEW]: 1,
+  client_error: 1,
+  web_vital: 1,
   [SESSION_START]: 1,
   [EXPERIMENT_VIEWED]: 1,
   [IDENTIFY]: GOVERNED_TRAIT_VERSIONS.identify,

@@ -1,8 +1,12 @@
 # Bundle Update Log
 
+## 2026-11-06
+
+- **Update**: ADR-4 and ADR-6: record explicit bounded diagnostics, document-scoped finalization, shared delivery and deferred measurement distribution.
+
 ## 2026-10-20
 
-- **Update**: ADR-6: builds require bun >=1.4.2 (root engines.bun, enforced by scripts/build.ts) and verify each bundle's runtime exports against its source entry, after BUG-1.
+- **Update**: ADR-6: builds require bun \>=1.4.2 (root engines.bun, enforced by scripts/build.ts) and verify each bundle's runtime exports against its source entry, after BUG-1.
 
 ## 2026-10-16
 

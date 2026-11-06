@@ -1,11 +1,11 @@
 ---
 type: Architecture Decision Record
 title: Two browser packages and ESM distribution
-description: Publish a dependency-free browser SDK and a thin React binding as one ESM build each.
+description: Publish a dependency-free browser SDK and a thin React binding with a deferred browser measurement file.
 docId: ADR-6
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-20T23:45:00Z
+timestamp: 2026-11-06T15:21:31Z
 generated:
   by: process:codex
   at: 2026-10-15T04:18:00Z
@@ -27,7 +27,7 @@ the browser client. Both packages have no runtime dependencies; React and kansok
 peers of the binding. Exclude metrics clients, replay, click/form capture, flag evaluation,
 Node producers and other framework bindings from this initiative.
 
-Build one minified ESM bundle with a linked source map and declaration set, with types and default export conditions.
+Build a minified ESM entry bundle with a linked source map and declaration set, with types and default export conditions.
 Use explicit .js relative imports in declarations. Declare Node >=20.19.0 for require(esm)
 support; Node 22 consumers need 22.12 or later. Keep the React use-client banner first.
 Check packed declarations with publint and attw's esm-only profile. Enforce gzip budgets
@@ -58,3 +58,16 @@ bun older than 1.4.2 is unsupported for building: bun 1.3.13 drops the kansoku-j
 re-exports under sideEffects false and still reports success
 ([BUG-1](../bug-reports/bun-1-3-drops-entry-named-reexports.md)). The published packages are
 plain ESM, so consumers of the built artifacts need no particular bun.
+
+## Deferred measurement distribution
+
+The browser package additionally ships one on-demand `vitals-<hash>.js` file, built by Bun
+ESM splitting from a relative dynamic import. The entry contains no measurement-library code;
+disabled applications never request the file. Keep the entry budget at 10 KiB gzip and enforce
+a separate 5 KiB gzip budget for measurement code. The React entry remains at 3 KiB.
+
+Pin web-vitals 6.2.3 exactly as a development dependency of kansoku-js and compile its standard
+build into that file. Published runtime dependencies remain empty. Keep the module independent
+of SDK runtime imports to avoid shared chunks. Ship upstream's Apache-2.0 license in
+THIRD_PARTY_NOTICES because minification removes the source header. Declarations and package
+checks cover the complete distribution; downstream bundlers may re-split the dynamic import.

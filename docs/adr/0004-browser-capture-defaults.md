@@ -5,7 +5,7 @@ description: Capture page views and session starts through the shared delivery e
 docId: ADR-4
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-16T04:26:26Z
+timestamp: 2026-11-06T15:21:31Z
 generated:
   by: process:codex
   at: 2026-10-15T04:05:00Z
@@ -69,3 +69,26 @@ dropped statistics; off adds no client flag. The ordinary opt-out/GPC/DNT gate p
 handling. This small matcher imports no third-party rule database and does not claim empirical
 accuracy; the server independently classifies the actual request UA. Client off cannot disable
 server bot classification.
+
+## Explicit optional diagnostics
+
+`autocapture.clientErrors` and `autocapture.webVitals` default to false independently. Errors use
+bubble-phase window listeners, bounded sanitization without stack access, weak-object and
+one-second label deduplication, ten reports per recorded view and thirty per rolling minute.
+Charge budgets before enqueue so application drop callbacks cannot amplify error storms.
+Stop removes listeners; start is reversible. Automatic capture shares all privacy gates.
+
+Vitals use the standard web-vitals build, registered once per document with detachable client
+sinks. Library observers have document lifetime because upstream offers no teardown. One scope
+is a document load or BFCache restoration, bound to its first recorded page view. FCP and TTFB
+report immediately; LCP, CLS and INP retain their latest observed values and emit once through
+the core exit hook before batch selection. Batched enqueue persists the queue mirror once.
+Late undelivered performance entries can be omitted, and later changes to emitted metrics are
+ignored. Soft routes receive no new measurements. BFCache TTFB is absent because upstream's
+zero is synthetic. No scope view means no samples; reset and opt-out retire pending attribution.
+
+Errors copy the latest recorded page envelope (with current-envelope fallback); vitals copy
+the first view in their scope. Copying never renews an old session. Both event names count as
+server engagement, so enabling either requires a deliberate adoption decision about bounce
+and duration consequences. No stack, attribution build, resource errors, worker/frame capture,
+soft-navigation measurement or additional exit transport is introduced.

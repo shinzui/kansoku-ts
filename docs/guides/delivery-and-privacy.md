@@ -76,3 +76,68 @@ a request. Full original URLs and caller JSON remain producer data; removing a h
 from the address bar does not erase the initial request from upstream logs.
 
 [Documentation index](../README.md)
+
+## Optional client errors and web vitals
+
+Both features are disabled by default and can be enabled independently:
+
+```typescript
+createKansoku({
+  baseUrl: "https://analytics.example.com",
+  writeKey: "ksk_w_public",
+  autocapture: { clientErrors: true, webVitals: true },
+})
+```
+
+The React provider accepts the same options. Decide whether these events should affect your
+product reports before enabling them: the server counts `client_error` and `web_vital` as
+engagement, which can reduce bounce rate and change observed session duration. Exit samples
+make vitals an engagement event on nearly every measured visit.
+
+Error capture listens for uncaught script errors and unhandled promise rejections in the current
+window. It never reads stacks, changes default error handling, wraps application functions, or
+captures failed resource loads, worker errors or errors in other frames. It sends only `type`,
+`message` and `handled: false`. Values with string `name` and `message` fields are treated as
+error-like; other rejected values receive fixed labels without being serialized. Type labels
+must be short identifiers (at most 128 code points). Messages scan only the first 1024 UTF-16
+code units, keep the first line, replace HTTP URLs, email-like text, long numbers and hexadecimal
+identifiers with placeholders, collapse whitespace, and retain at most 256 Unicode code points.
+Sanitizing is deliberately conservative and cannot recognize all personal data; inspect or drop
+labels, page URLs and context with `beforeSend` for your application.
+
+The same error object is captured once per client. Repeated sanitized labels are deduplicated
+for one second. At most ten reports per successfully recorded page view and thirty per rolling
+minute reach the shared pipeline, including reports later dropped by `beforeSend`, validation
+or queue capacity. A new page view resets the ten-report allowance; stop/start preserves the
+rolling limit and deduplication. No maintenance timer is used. Opt-out and configured GPC/DNT
+silently suppress automatic capture. Stop removes this client's error listeners; start restores
+them once. Captured errors copy the latest recorded page view's URL, identity and session without
+renewing the session; without a view they use the current URL and ordinary envelope construction.
+
+Vital measurement code loads from a separate file during an idle callback (with a one-second
+timeout), or a timer where idle callbacks are unavailable. Leaving `webVitals` off never downloads
+that file or installs its observers. The standard `web-vitals` 6.2.3 build measures LCP (Largest
+Contentful Paint), INP (Interaction to Next Paint), CLS (Cumulative Layout Shift), FCP (First
+Contentful Paint) and TTFB (Time to First Byte). Values use milliseconds except unitless CLS,
+which can exceed one. Zero is a valid measurement; unsupported or unavailable metrics are absent.
+Only `metric` and `value` are sent. INP needs a qualifying interaction; CLS requires browser
+layout-shift support. Visits hidden before measurement code attaches have no samples.
+
+A measurement scope is one document load or BFCache restoration. Its first successfully recorded
+page view supplies the URL, session, identity and context for all samples. Later single-page
+routes get no new vitals and do not change pending attribution. Without a page view, no vitals
+are sent. FCP and TTFB are emitted when first reported. The latest observed LCP, CLS and INP are
+emitted once at the first exit transition where each is available, before selecting the exit
+batch. Entries not delivered by the browser by that instant can be omitted. Later updates to an
+emitted metric are ignored; a metric first available after returning to the tab can be sent on
+the next exit. BFCache restores begin a new scope and omit the library's synthetic zero TTFB.
+Opt-out and identity reset retire the old scope and unsent samples. A subsequent document load
+or BFCache restore can measure a new scope.
+
+Stop detaches the client sink and exit hook; restart reconnects without duplicating measurements.
+The library has no observer teardown: after loading, its observers remain for the document's
+lifetime, maintaining bounded measurement state even when no clients subscribe. The module
+registers measurement functions once per document and shares them across clients. No `unload` or
+`beforeunload` listener is installed. All events use the existing validation, `beforeSend`, bot
+policy, queue, privacy gates and delivery retries with stable event IDs. Several vital samples
+finalized at one exit require one queue-mirror write; exit delivery remains best effort.

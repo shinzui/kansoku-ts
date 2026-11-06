@@ -31,6 +31,8 @@ export interface KansokuOptions {
     pageViews?: boolean
     sessions?: boolean
     pageLeave?: boolean
+    clientErrors?: boolean
+    webVitals?: boolean
   }
   exitTransport?: "keepalive" | "beacon"
   botDetection?: "flag" | "drop" | "off"

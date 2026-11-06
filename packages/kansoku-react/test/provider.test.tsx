@@ -98,3 +98,41 @@ test("useKansoku throws outside a provider in the browser", () => {
     "useKansoku must be used inside <KansokuProvider>",
   )
 })
+
+test("owned StrictMode capture sends one sanitized error and removes listeners on unmount", async () => {
+  const { config, mock } = fixture()
+  let client!: KansokuClient
+  function Consumer() {
+    client = useKansoku()
+    return null
+  }
+  const view = render(
+    <StrictMode>
+      <KansokuProvider
+        options={{
+          ...config,
+          autocapture: { sessions: false, clientErrors: true, webVitals: true },
+        }}
+      >
+        <Consumer />
+      </KansokuProvider>
+    </StrictMode>,
+  )
+  const failure = new Error("strict mode failure")
+  window.dispatchEvent(new ErrorEvent("error", { error: failure }))
+  window.dispatchEvent(new ErrorEvent("error", { error: failure }))
+  await client.flush()
+  expect(
+    mock.requests
+      .flatMap((r) => r.body as Array<{ eventName: string }>)
+      .filter((e) => e.eventName === "client_error"),
+  ).toHaveLength(1)
+  view.unmount()
+  window.dispatchEvent(new ErrorEvent("error", { error: new Error("after unmount") }))
+  await client.flush()
+  expect(
+    mock.requests
+      .flatMap((r) => r.body as Array<{ eventName: string }>)
+      .filter((e) => e.eventName === "client_error"),
+  ).toHaveLength(1)
+})

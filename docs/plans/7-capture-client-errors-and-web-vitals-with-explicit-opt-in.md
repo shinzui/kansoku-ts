@@ -21,13 +21,18 @@ provenance:
       at: 2026-11-06T14:36:07Z
       mode: "update"
       note: "Validate against the working tree, server contract and web-vitals 6.2.3; select an on-demand measurement file, exit-time finalization and bounded-work rules"
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-11-06T15:12:53Z
+      mode: "implement"
+      note: "Implement optional client errors and deferred document-scoped web vitals with browser and live acceptance"
 ---
 
 
 # Capture client errors and web vitals with explicit opt-in
 
 This ExecPlan is a living document. Keep Progress, Surprises & Discoveries, Decision Log,
-and Outcomes & Retrospective current. This is an unimplemented follow-up requested by
+and Outcomes & Retrospective current. This follow-up was requested by
 `mori://shinzui/kansoku/okf/improvement-requests/concepts/IR-8` and
 `mori://shinzui/kansoku/plans/57-declare-client-error-and-web-vital-events`.
 
@@ -40,14 +45,14 @@ smoke test must show a sanitized uncaught error and one final LCP measurement re
 with the page URL, session and identity, while the default configuration emits neither.
 An application that leaves both flags off gets no extra listeners or observers and never
 downloads measurement code, and the `kansoku-js` entry bundle stays inside its existing 10 KiB
-gzip budget either way. This plan records future work; server event declarations alone do not
+gzip budget either way. Both options must still be explicitly enabled; server event declarations alone do not
 start capture.
 
 ## Progress
 
 
-- [ ] Milestone 1: Independently opt-in error capture emits bounded sanitized errors, deduplicates repeated delivery, and enforces finite rates and bounded per-error work through the shared privacy/delivery path, inside the entry bundle budget.
-- [ ] Milestone 2: Independently opt-in vital capture loads its measurement code on demand, emits at most one final sample per supported metric per measured page view with correct units, and delivers exit-time samples in the exit request under the documented finalization policy.
+- [x] Milestone 1 (2026-11-06; error suite and combined 104-test suite pass; `just check` passes with entry 10230 bytes gzip): Independently opt-in error capture emits bounded sanitized errors, deduplicates repeated delivery, and enforces finite rates and bounded per-error work through the shared privacy/delivery path, inside the entry bundle budget.
+- [x] Milestone 2 (2026-11-06; deterministic lifecycle/privacy tests and Chromium navigation proof pass; measurement file 3613 bytes gzip): Independently opt-in vital capture loads its measurement code on demand, emits at most one final sample per supported metric per measured page view with correct units, and delivers exit-time samples in the exit request under the documented finalization policy.
 - [ ] Milestone 3: Real-browser/public-server evidence, SSR and React lifecycle tests, documentation and ADR updates prove the complete optional behavior without changing defaults.
 
 ## Surprises & Discoveries
@@ -109,6 +114,22 @@ Mori has no `web-vitals` project (`mori registry search` finds nothing for `web-
 `vitals`), so the npm tarball was read directly. `mori path` also cannot yet resolve the two
 `mori://shinzui/kansoku/...` artifact URIs cited at the top of this plan; the project URI
 resolves and both files exist in that checkout.
+
+Implementation proof (2026-11-06): Chromium delivered FCP and TTFB in ordinary batches and
+LCP=28 ms, CLS=0 and INP=80 ms in the navigation exit request. The observed order was
+`pagehide`, then `visibilitychange`. A second sink subscribed to the same measurement module
+and saved its latest callbacks through visibilitychange; each exit value matched the library's
+final callback exactly. The pending-value design therefore remains selected. The browser test
+asserts the batch received by the HTTP mock because Playwright's departing-page request events
+omit the keepalive request. The default example never requests the measurement file.
+
+The build uses Bun ESM splitting, yielding exactly the entry and one `vitals-<hash>.js` file,
+with no shared runtime chunk. `just check` measured 10230 bytes gzip for the entry (10240 budget)
+and 3613 for measurement code (5120 budget). This leaves little entry headroom; future changes
+must continue measuring the built artifact. The complete local suite reports 104 passing cases
+plus three SSR cases; real browser smoke reports three passing cases. Required live evidence
+is still running under the owned server harness. FRIC-1 records and resolves the shared-test
+helper cleanup issue; it did not alter capture behavior.
 
 ## Decision Log
 
@@ -181,6 +202,11 @@ the server's `prop:message` grouping useful.
 
 ## Outcomes & Retrospective
 
+
+Milestones 1 and 2 implement both optional paths and prove their local/browser behavior. The
+contract refresh is committed as f199e23. Required server acceptance remains pending, so
+Milestone 3 remains open. ADR-4 and ADR-6 now preserve the durable privacy, lifecycle and
+packaging decisions. FRIC-1 is resolved by explicit cleanup hooks in the new capture suites.
 
 ## Context and Orientation
 

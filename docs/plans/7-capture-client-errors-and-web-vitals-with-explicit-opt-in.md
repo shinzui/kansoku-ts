@@ -10,6 +10,12 @@ provenance:
     model: "gpt-6.1-sol"
     harness: "codex-cli"
     at: 2026-11-06T13:52:03Z
+  revisions:
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-11-06T13:57:41Z
+      mode: "update"
+      note: "Pin published server contract commit and document required live credential preflight"
 ---
 
 
@@ -157,12 +163,15 @@ Keep React a thin binding. Run required checks, record evidence and distill dura
 ## Concrete Steps
 
 
-Run from the kansoku-ts checkout. Inspect contract sync options before refreshing the server
-artifacts; the generated schema is committed with its source catalog, not edited by hand.
+Run from the kansoku-ts checkout. The sibling checkout in the sync command is the path
+resolved by the preceding Mori command; if the checkout layout differs, use that resolved path.
+Commit 021ec1a in `mori://shinzui/kansoku` publishes the required v1 contracts. Sync its artifacts
+and commit them before `just check-contracts`, which compares against HEAD; do not edit generated
+schemas by hand.
 
 ```bash
 mori path mori://shinzui/kansoku
-bun scripts/sync-contracts.ts --from /path/to/resolved/kansoku --ref <published-server-commit>
+bun scripts/sync-contracts.ts --from ../kansoku --ref 021ec1a
 nix develop -c just install-frozen
 nix develop -c just build
 nix develop -c just test
@@ -170,9 +179,10 @@ nix develop -c just check
 nix develop -c just test-smoke
 ```
 
-Read `test/live` and its current environment inputs, start an owned disposable Kansoku server,
-and then run the live gate with that server's disposable write key; record exact invocation
-without secrets at implementation time:
+Read `test/live/env.ts`, start an owned disposable Kansoku server, and export
+`KANSOKU_LIVE_BASE_URL`, `KANSOKU_LIVE_WRITE_KEY` and `KANSOKU_LIVE_SERVICE_TOKEN` from that
+owned harness. Existing `test/live/env.ts` skips absent credentials: make required mode fail
+instead and verify nonzero assertions. Record the harness invocation without secrets:
 
 ```bash
 nix develop -c just test-live

@@ -4,6 +4,17 @@
       "AccountId": {
         "type": "string"
       },
+      "Aggregation": {
+        "enum": [
+          "count",
+          "unique_count",
+          "sum",
+          "average",
+          "percentile",
+          "ratio"
+        ],
+        "type": "string"
+      },
       "AnalyticsEvent": {
         "properties": {
           "accountId": {
@@ -151,10 +162,185 @@
       "CausationId": {
         "type": "string"
       },
+      "Cohort": {
+        "properties": {
+          "createdAt": {
+            "$ref": "#/components/schemas/UTCTime"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/CohortDefinition"
+          },
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/UTCTime"
+          }
+        },
+        "required": [
+          "id",
+          "definition",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "CohortCondition": {
+        "properties": {
+          "atLeast": {
+            "maximum": 9223372036854775807,
+            "minimum": -9223372036854775808,
+            "type": "integer"
+          },
+          "atMost": {
+            "maximum": 9223372036854775807,
+            "minimum": -9223372036854775808,
+            "type": "integer"
+          },
+          "did": {
+            "type": "string"
+          },
+          "didNot": {
+            "type": "string"
+          },
+          "filters": {
+            "items": {
+              "$ref": "#/components/schemas/MetricFilter"
+            },
+            "type": "array"
+          },
+          "withinDays": {
+            "maximum": 365,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "withinDays"
+        ],
+        "type": "object"
+      },
+      "CohortDefinition": {
+        "properties": {
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/CohortCondition"
+            },
+            "maxItems": 4,
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "behavioural",
+              "static"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "traits": {
+            "items": {
+              "$ref": "#/components/schemas/MetricFilter"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "CohortMembers": {
+        "properties": {
+          "userIds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50000,
+            "type": "array"
+          }
+        },
+        "required": [
+          "userIds"
+        ],
+        "type": "object"
+      },
+      "CohortSize": {
+        "properties": {
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "size"
+        ],
+        "type": "object"
+      },
+      "Connection_Cohort": {
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/Edge_Cohort"
+            },
+            "type": "array"
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        },
+        "required": [
+          "edges",
+          "pageInfo"
+        ],
+        "type": "object"
+      },
+      "Connection_SavedMetric": {
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/Edge_SavedMetric"
+            },
+            "type": "array"
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        },
+        "required": [
+          "edges",
+          "pageInfo"
+        ],
+        "type": "object"
+      },
+      "Connection_Text": {
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/Edge_Text"
+            },
+            "type": "array"
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        },
+        "required": [
+          "edges",
+          "pageInfo"
+        ],
+        "type": "object"
+      },
       "ContractProperty": {
         "properties": {
           "description": {
             "type": "string"
+          },
+          "maxLength": {
+            "maximum": 9223372036854775807,
+            "minimum": -9223372036854775808,
+            "type": "integer"
           },
           "minLength": {
             "maximum": 9223372036854775807,
@@ -194,6 +380,66 @@
       "CorrelationId": {
         "type": "string"
       },
+      "Cursor": {
+        "description": "opaque pagination cursor",
+        "format": "base64url",
+        "type": "string"
+      },
+      "CustomDefinition": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/MetricDefinition"
+          },
+          {
+            "$ref": "#/components/schemas/RatioMetric"
+          }
+        ]
+      },
+      "Edge_Cohort": {
+        "properties": {
+          "cursor": {
+            "$ref": "#/components/schemas/Cursor"
+          },
+          "node": {
+            "$ref": "#/components/schemas/Cohort"
+          }
+        },
+        "required": [
+          "node",
+          "cursor"
+        ],
+        "type": "object"
+      },
+      "Edge_SavedMetric": {
+        "properties": {
+          "cursor": {
+            "$ref": "#/components/schemas/Cursor"
+          },
+          "node": {
+            "$ref": "#/components/schemas/SavedMetric"
+          }
+        },
+        "required": [
+          "node",
+          "cursor"
+        ],
+        "type": "object"
+      },
+      "Edge_Text": {
+        "properties": {
+          "cursor": {
+            "$ref": "#/components/schemas/Cursor"
+          },
+          "node": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "cursor"
+        ],
+        "type": "object"
+      },
       "EventId": {
         "type": "string"
       },
@@ -226,6 +472,19 @@
         ],
         "type": "object"
       },
+      "FilterOp": {
+        "enum": [
+          "eq",
+          "neq",
+          "in",
+          "contains",
+          "gt",
+          "lt",
+          "set",
+          "unset"
+        ],
+        "type": "string"
+      },
       "IngestAck": {
         "properties": {
           "accepted": {
@@ -242,6 +501,108 @@
           "eventId"
         ],
         "type": "object"
+      },
+      "MetricDefinition": {
+        "description": "Simple custom metric: name has 1..200 characters; eventNames has 1..100 validated names; aggregation is count, unique_count, sum, average or percentile. Percentile requires a finite quantile strictly between zero and one, using exact inclusive (R-7) interpolation on finite Float64 samples; empty groups emit no point. Quantile is forbidden for other aggregations and ratio components. Sum/average/percentile require a numeric aggregationProperty declared across every listed event. Filters are grammar strings: at most eight AND groups, each with up to eight OR terms and 16384 decoded UTF-8 bytes combined with request filters. groupBy uses up to two distinct full dimension names. Day is the default grain; request grouping/grain override saved defaults. No SQL is accepted.",
+        "properties": {
+          "aggregation": {
+            "$ref": "#/components/schemas/Aggregation"
+          },
+          "aggregationProperty": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "eventNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "filters": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "groupBy": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantile": {
+            "format": "double",
+            "type": "number"
+          },
+          "timeGrain": {
+            "$ref": "#/components/schemas/TimeGrain"
+          }
+        },
+        "required": [
+          "name",
+          "eventNames",
+          "aggregation",
+          "filters",
+          "groupBy"
+        ],
+        "type": "object"
+      },
+      "MetricFilter": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "dimension": {
+                "type": "string"
+              },
+              "op": {
+                "$ref": "#/components/schemas/FilterOp"
+              },
+              "value": {}
+            },
+            "required": [
+              "dimension",
+              "op"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "or": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "dimension": {
+                      "type": "string"
+                    },
+                    "op": {
+                      "$ref": "#/components/schemas/FilterOp"
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "dimension",
+                    "op"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 8,
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "or"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "MetricPoint": {
         "properties": {
@@ -300,6 +661,27 @@
       "OrganizationId": {
         "type": "string"
       },
+      "PageInfo": {
+        "properties": {
+          "endCursor": {
+            "$ref": "#/components/schemas/Cursor"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "startCursor": {
+            "$ref": "#/components/schemas/Cursor"
+          }
+        },
+        "required": [
+          "hasNextPage",
+          "hasPreviousPage"
+        ],
+        "type": "object"
+      },
       "ProblemDetails": {
         "properties": {
           "code": {
@@ -333,6 +715,29 @@
         ],
         "type": "object"
       },
+      "RatioMetric": {
+        "description": "Ratio of two simple definitions; component grouping must be empty and timeGrain null. Each side supports count, unique_count, sum or average and its own filters. Request filters apply to both sides within each population's eight-group/16384-byte budget. Ratios are unbucketed, reject event-property grouping and return zero for a zero denominator. Names are labels, never builtin dispatch keys.",
+        "properties": {
+          "denominator": {
+            "$ref": "#/components/schemas/MetricDefinition"
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "numerator": {
+            "$ref": "#/components/schemas/MetricDefinition"
+          }
+        },
+        "required": [
+          "name",
+          "numerator",
+          "denominator"
+        ],
+        "type": "object"
+      },
       "RejectedEvent": {
         "properties": {
           "errors": {
@@ -353,6 +758,51 @@
         "required": [
           "index",
           "errors"
+        ],
+        "type": "object"
+      },
+      "RelayPageError": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "parameter": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "type": "object"
+      },
+      "SavedMetric": {
+        "properties": {
+          "createdAt": {
+            "$ref": "#/components/schemas/UTCTime"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/CustomDefinition"
+          },
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/UTCTime"
+          }
+        },
+        "required": [
+          "id",
+          "definition",
+          "createdAt",
+          "updatedAt"
         ],
         "type": "object"
       },
@@ -393,9 +843,24 @@
       "SourceEventId": {
         "type": "string"
       },
+      "TimeGrain": {
+        "enum": [
+          "hour",
+          "day",
+          "week",
+          "month",
+          "none"
+        ],
+        "type": "string"
+      },
       "UTCTime": {
         "example": "2016-07-22T00:00:00Z",
         "format": "yyyy-mm-ddThh:MM:ssZ",
+        "type": "string"
+      },
+      "UUID": {
+        "example": "00000000-0000-0000-0000-000000000000",
+        "format": "uuid",
         "type": "string"
       },
       "UserId": {
@@ -447,9 +912,2286 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/cohorts": {
+      "get": {
+        "operationId": "getCohorts",
+        "parameters": [
+          {
+            "description": "Forward page size (0..100). Defaults to 20 when neither 'first' nor 'last' is given. Cannot be combined with 'last' or 'before'.",
+            "in": "query",
+            "name": "first",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor: return items after this position (forward pagination).",
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "format": "base64url",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Backward page size (0..100). Cannot be combined with 'first' or 'after'.",
+            "in": "query",
+            "name": "last",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor: return items before this position (backward pagination).",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "format": "base64url",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection_Cohort"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection_Cohort"
+                }
+              }
+            },
+            "description": "Cohort page"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayPageError"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayPageError"
+                }
+              }
+            },
+            "description": "Invalid pagination"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      },
+      "post": {
+        "operationId": "postCohorts",
+        "requestBody": {
+          "content": {
+            "application/json;charset=utf-8": {
+              "schema": {
+                "$ref": "#/components/schemas/CohortDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cohort"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cohort"
+                }
+              }
+            },
+            "description": "Saved cohort"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request or `body`"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unsupported media type"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      }
+    },
+    "/cohorts/{id}": {
+      "delete": {
+        "operationId": "deleteCohortsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "description": "Deleted cohort"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "`id` or Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      },
+      "get": {
+        "operationId": "getCohortsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cohort"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cohort"
+                }
+              }
+            },
+            "description": "Cohort result"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "`id` or Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      },
+      "put": {
+        "operationId": "putCohortsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json;charset=utf-8": {
+              "schema": {
+                "$ref": "#/components/schemas/CohortDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cohort"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cohort"
+                }
+              }
+            },
+            "description": "Saved cohort"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request or `body`"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "`id` or Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unsupported media type"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      }
+    },
+    "/cohorts/{id}/members": {
+      "get": {
+        "operationId": "getCohortsIdMembers",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Forward page size (0..100). Defaults to 20 when neither 'first' nor 'last' is given. Cannot be combined with 'last' or 'before'.",
+            "in": "query",
+            "name": "first",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor: return items after this position (forward pagination).",
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "format": "base64url",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Backward page size (0..100). Cannot be combined with 'first' or 'after'.",
+            "in": "query",
+            "name": "last",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor: return items before this position (backward pagination).",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "format": "base64url",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection_Text"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection_Text"
+                }
+              }
+            },
+            "description": "Cohort page"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayPageError"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayPageError"
+                }
+              }
+            },
+            "description": "Invalid pagination or `to` or `from`"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "`id` or Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      },
+      "put": {
+        "operationId": "putCohortsIdMembers",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json;charset=utf-8": {
+              "schema": {
+                "$ref": "#/components/schemas/CohortMembers"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CohortSize"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/CohortSize"
+                }
+              }
+            },
+            "description": "Cohort size"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request or `body`"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "`id` or Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unsupported media type"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      }
+    },
+    "/cohorts/{id}/size": {
+      "get": {
+        "operationId": "getCohortsIdSize",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CohortSize"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/CohortSize"
+                }
+              }
+            },
+            "description": "Cohort result"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request or `to` or `from`"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "`id` or Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      }
+    },
+    "/metric-definitions": {
+      "get": {
+        "operationId": "getMetricDefinitions",
+        "parameters": [
+          {
+            "description": "Forward page size (0..100). Defaults to 20 when neither 'first' nor 'last' is given. Cannot be combined with 'last' or 'before'.",
+            "in": "query",
+            "name": "first",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor: return items after this position (forward pagination).",
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "format": "base64url",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Backward page size (0..100). Cannot be combined with 'first' or 'after'.",
+            "in": "query",
+            "name": "last",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor: return items before this position (backward pagination).",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "format": "base64url",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection_SavedMetric"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection_SavedMetric"
+                }
+              }
+            },
+            "description": "Cohort page"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayPageError"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayPageError"
+                }
+              }
+            },
+            "description": "Invalid pagination"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      },
+      "post": {
+        "operationId": "postMetricDefinitions",
+        "requestBody": {
+          "content": {
+            "application/json;charset=utf-8": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedMetric"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedMetric"
+                }
+              }
+            },
+            "description": "Saved metric"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request or `body`"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unsupported media type"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      }
+    },
+    "/metric-definitions/{id}": {
+      "delete": {
+        "operationId": "deleteMetricDefinitionsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "description": "Deleted metric"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "`id` or Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      },
+      "get": {
+        "operationId": "getMetricDefinitionsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedMetric"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedMetric"
+                }
+              }
+            },
+            "description": "Saved metric"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "`id` or Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      },
+      "put": {
+        "operationId": "putMetricDefinitionsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json;charset=utf-8": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedMetric"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedMetric"
+                }
+              }
+            },
+            "description": "Saved metric"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request or `body`"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "`id` or Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unsupported media type"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      }
+    },
     "/metrics/acquisition": {
       "get": {
-        "description": "Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, or current user:<governed trait>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
+        "description": "Acquisition conversions select one first session per resolved person before grouping. converted_users and conversion_rate require conversionEvents: a single comma-separated list of 1..20 event names (1..128 lowercase ASCII letters, digits, underscore, dot, colon or hyphen); trim entries, reject empty entries, deduplicate after the raw bound. Legacy measures reject the list. Rates use the selected first-session population, not legacy users. Conversions may come from any source in the range at or after session start. includeBots controls whole sessions and individual conversion events. Explicit timeGrain=none returns one null bucket per populated group on calendar users, simple custom metrics, acquisition, events, page views and sessions. Other routes reject none. Omission preserves defaults. Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, current user:<governed trait>, organization, or org:<governed organization trait> on event sources. Repeated filter parameters are AND-combined JSON terms, JSON {or:[term,...]} groups, or shorthand dimension:op:value terms separated by | for OR (literal | requires JSON; omit value for set/unset): at most 8 groups of at most 8 terms, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
         "operationId": "getMetricsAcquisition",
         "parameters": [
           {
@@ -487,7 +3229,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -497,7 +3240,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -510,8 +3253,18 @@
             "schema": {
               "enum": [
                 "sessions",
-                "users"
+                "users",
+                "converted_users",
+                "conversion_rate"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conversionEvents",
+            "required": false,
+            "schema": {
               "type": "string"
             }
           },
@@ -548,7 +3301,7 @@
                 }
               }
             },
-            "description": "Malformed request or `includeBots` or `measure` or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
+            "description": "Malformed request or `includeBots` or `conversionEvents` or `measure` or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
             "content": {
@@ -675,7 +3428,7 @@
     },
     "/metrics/conversion": {
       "get": {
-        "description": "Exact ordered signup conversion: starters are the denominator; only starters with a later signup_completed in the millisecond/event-ID timeline within range (window capped at 90 days) convert. Zero denominator returns zero; ratio stays 0..1. Group ownership is the earliest eligible start. timeGrain and prop grouping are rejected.Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, or current user:<governed trait>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
+        "description": "Exact ordered signup conversion: starters are the denominator; only starters with a later signup_completed in the millisecond/event-ID timeline within range (window capped at 90 days) convert. Zero denominator returns zero; ratio stays 0..1. Group ownership is the earliest eligible start. timeGrain and prop grouping are rejected.Explicit timeGrain=none returns one null bucket per populated group on calendar users, simple custom metrics, acquisition, events, page views and sessions. Other routes reject none. Omission preserves defaults. Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, current user:<governed trait>, organization, or org:<governed organization trait> on event sources. Repeated filter parameters are AND-combined JSON terms, JSON {or:[term,...]} groups, or shorthand dimension:op:value terms separated by | for OR (literal | requires JSON; omit value for set/unset): at most 8 groups of at most 8 terms, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.aggregate=users (default) or organizations merges member timelines and excludes empty organization IDs. The organizations route always counts organizations. attribution=event (default) preserves event organization IDs; user_organization fills only missing IDs from the resolved user current group membership. Current org:plan, org:industry, org:country and numeric org:seats traits reclassify historical reports. Experiments retain user aggregation. See Organisations in the query guide.",
         "operationId": "getMetricsConversion",
         "parameters": [
           {
@@ -713,7 +3466,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -723,10 +3477,34 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "aggregate",
+            "required": false,
+            "schema": {
+              "enum": [
+                "users",
+                "organizations"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "attribution",
+            "required": false,
+            "schema": {
+              "enum": [
+                "event",
+                "user_organization"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -754,7 +3532,7 @@
                 }
               }
             },
-            "description": "Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
+            "description": "Malformed request or `attribution` or `aggregate` or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
             "content": {
@@ -881,7 +3659,7 @@
     },
     "/metrics/custom": {
       "get": {
-        "description": "Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, or current user:<governed trait>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
+        "description": "Ad-hoc or saved account-scoped metrics. Percentile requires a declared numeric property and finite quantile strictly between zero and one; exact inclusive (R-7) interpolation over canonical finite samples, independently per group/bucket. Empty populations emit no points. Quantile is forbidden on other aggregations, ratios and saved execution overrides. Existing resource limits apply.Explicit timeGrain=none returns one null bucket per populated group on calendar users, simple custom metrics, acquisition, events, page views and sessions. Other routes reject none. Omission preserves defaults. Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, current user:<governed trait>, organization, or org:<governed organization trait> on event sources. Repeated filter parameters are AND-combined JSON terms, JSON {or:[term,...]} groups, or shorthand dimension:op:value terms separated by | for OR (literal | requires JSON; omit value for set/unset): at most 8 groups of at most 8 terms, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
         "operationId": "getMetricsCustom",
         "parameters": [
           {
@@ -919,7 +3697,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -929,10 +3708,67 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "events",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "aggregation",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "property",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quantile",
+            "required": false,
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "denominatorEvents",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "denominatorAggregation",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -960,7 +3796,7 @@
                 }
               }
             },
-            "description": "Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
+            "description": "Malformed request or `denominatorAggregation` or `denominatorEvents` or `quantile` or `property` or `aggregation` or `events` or `metric` or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
             "content": {
@@ -1087,7 +3923,7 @@
     },
     "/metrics/events": {
       "get": {
-        "description": "Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, or current user:<governed trait>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
+        "description": "Explicit timeGrain=none returns one null bucket per populated group on calendar users, simple custom metrics, acquisition, events, page views and sessions. Other routes reject none. Omission preserves defaults. Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, current user:<governed trait>, organization, or org:<governed organization trait> on event sources. Repeated filter parameters are AND-combined JSON terms, JSON {or:[term,...]} groups, or shorthand dimension:op:value terms separated by | for OR (literal | requires JSON; omit value for set/unset): at most 8 groups of at most 8 terms, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
         "operationId": "getMetricsEvents",
         "parameters": [
           {
@@ -1125,7 +3961,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -1135,7 +3972,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -1293,7 +4130,7 @@
     },
     "/metrics/experiments": {
       "get": {
-        "description": "Current user: filters/grouping select exact canonical populations; segmented exposures bypass the raw sketch. measure=exposures (default without segmentation) returns daily-rollup uniqCombined raw-identity exposure counts (~0.8% sketch error at scale); it differs from exact stitched users. measure=diagnostics uses exact canonical subjects and valid experiment/variant exposures, assigning each user once per experiment/requested bucket to earliest occurred_at,event_id. group.measure emits exposed_users, multiple_exposure (>1 observed variant), assigned_users and variant_share; per-variant shares sum to one when nonempty. Repeated exposures do not increase assignment. Zero users emit zero totals and no variant rows; missing/invalid names are excluded. All observed variants remain visible, including zero assignments. Day/week/month or whole range; hour rejected. First observed exposure is not an authoritative randomization log; contamination invalidates naive sample-ratio interpretation. Positive half-open range at most 366 days; at most 10000 complete points and bounded native work.",
+        "description": "Current user: filters/grouping select exact canonical populations; segmented exposures bypass the raw sketch. measure=exposures (default without segmentation) returns daily-rollup uniqCombined raw-identity exposure counts (~0.8% sketch error at scale); it differs from exact stitched users. measure=diagnostics uses exact canonical subjects and valid experiment/variant exposures, assigning each user once per experiment/requested bucket to earliest occurred_at,event_id. group.measure emits exposed_users, multiple_exposure (>1 observed variant), assigned_users and variant_share; per-variant shares sum to one when nonempty. Repeated exposures do not increase assignment. Zero users emit zero totals and no variant rows; missing/invalid names are excluded. All observed variants remain visible, including zero assignments. Day/week/month or whole range by omission; explicit hour and none rejected. First observed exposure is not an authoritative randomization log; contamination invalidates naive sample-ratio interpretation. Positive half-open range at most 366 days; at most 10000 complete points and bounded native work.",
         "operationId": "getMetricsExperiments",
         "parameters": [
           {
@@ -1331,7 +4168,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -1361,7 +4199,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -1569,7 +4407,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -1727,7 +4565,7 @@
     },
     "/metrics/experiments/funnel": {
       "get": {
-        "description": "Canonical user timelines ordered by millisecond occurred_at then event_id, with immutable duplicates removed. At most 20 ordered steps; one event cannot satisfy repeated steps. mode=sequential (default) allows intervening events; strict requires adjacency including automatic events, accepts current-user filters over complete participant timelines, and rejects event filters. Consider every start; select maximum reach, earliest completion, earliest start, then event IDs. window is inclusive seconds from first step, default range capped at 7776000. Repeat exclude up to 20 distinct validated names; exclusions between matched steps stop a chain, and cannot overlap steps. measure=count (default) emits cumulative reach. time_to_convert emits exact nearest-rank p50_seconds/p90_seconds for reached steps >=2, from the same selected chain. One/two group dimensions use the earliest eligible first-step event even when a later attempt wins; prop dimensions require only its schema; user dimensions use participant current traits. Sequential event filters select step rows and cannot hide exclusions. Positive half-open range at most 366 days; native execution/memory limits; at most 10000 complete points or HTTP 400. Per-variant timelines include only events at or after that user/variant first exposure inside the range. Multi-variant users remain in each variant.",
+        "description": "Canonical user timelines ordered by millisecond occurred_at then event_id, with immutable duplicates removed. At most 20 steps; one event cannot satisfy repeated steps. mode=any_order opens one window at the earliest matching step and counts distinct step positions; mode=sequential (default) allows intervening events; strict requires adjacency including automatic events, accepts current-user filters over complete participant timelines, and rejects event filters. counting=uniques (default) selects maximum reach, earliest completion, earliest start, then event IDs for sequential/strict. counting=totals counts nonoverlapping entries, restarting after completion, expiry or interruption; any-order entries start at any step, others at step one. Totals add an ungrouped measure=entries point per variant and label reach rows measure=count. There is no exclusion grace period. window is inclusive seconds from first step, default range capped at 7776000. Repeat exclude up to 20 distinct validated names; exclusions between matched steps stop a chain, and cannot overlap steps. measure=count (default) emits cumulative reach. time_to_convert emits exact nearest-rank p50_seconds/p90_seconds for reached steps >=2, from the same selected chain. One/two group dimensions use the earliest eligible start (per attempt for totals). prop attribution=first_touch (default), last_touch or step:<n> uses the start, last matched event or named step; absent/unreached values are other. Validate declarations in that step, or compatible declared properties across steps when touch varies; user dimensions use participant current traits. Sequential event filters select step rows and cannot hide exclusions. Positive half-open range at most 366 days; native execution/memory limits; at most 10000 complete points or HTTP 400. Per-variant timelines include only events at or after that user/variant first exposure inside the range. Multi-variant users remain in each variant.",
         "operationId": "getMetricsExperimentsFunnel",
         "parameters": [
           {
@@ -1781,7 +4619,8 @@
             "schema": {
               "enum": [
                 "sequential",
-                "strict"
+                "strict",
+                "any_order"
               ],
               "type": "string"
             }
@@ -1794,6 +4633,50 @@
               "enum": [
                 "count",
                 "time_to_convert"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "counting",
+            "required": false,
+            "schema": {
+              "enum": [
+                "uniques",
+                "totals"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "attribution",
+            "required": false,
+            "schema": {
+              "enum": [
+                "first_touch",
+                "last_touch",
+                "step:1",
+                "step:2",
+                "step:3",
+                "step:4",
+                "step:5",
+                "step:6",
+                "step:7",
+                "step:8",
+                "step:9",
+                "step:10",
+                "step:11",
+                "step:12",
+                "step:13",
+                "step:14",
+                "step:15",
+                "step:16",
+                "step:17",
+                "step:18",
+                "step:19",
+                "step:20"
               ],
               "type": "string"
             }
@@ -1821,7 +4704,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -1852,7 +4735,7 @@
                 }
               }
             },
-            "description": "Malformed request or `filter` or `groupBy` or `exclude` or `measure` or `mode` or `window` or `to` or `from` or `steps` or `experiment`"
+            "description": "Malformed request or `filter` or `groupBy` or `exclude` or `attribution` or `counting` or `measure` or `mode` or `window` or `to` or `from` or `steps` or `experiment`"
           },
           "401": {
             "content": {
@@ -1979,7 +4862,7 @@
     },
     "/metrics/feature-adoption": {
       "get": {
-        "description": "Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, or current user:<governed trait>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
+        "description": "Explicit timeGrain=none returns one null bucket per populated group on calendar users, simple custom metrics, acquisition, events, page views and sessions. Other routes reject none. Omission preserves defaults. Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, current user:<governed trait>, organization, or org:<governed organization trait> on event sources. Repeated filter parameters are AND-combined JSON terms, JSON {or:[term,...]} groups, or shorthand dimension:op:value terms separated by | for OR (literal | requires JSON; omit value for set/unset): at most 8 groups of at most 8 terms, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.aggregate=users (default) or organizations merges member timelines and excludes empty organization IDs. The organizations route always counts organizations. attribution=event (default) preserves event organization IDs; user_organization fills only missing IDs from the resolved user current group membership. Current org:plan, org:industry, org:country and numeric org:seats traits reclassify historical reports. Experiments retain user aggregation. See Organisations in the query guide.",
         "operationId": "getMetricsFeatureAdoption",
         "parameters": [
           {
@@ -2017,7 +4900,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -2027,10 +4911,34 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "aggregate",
+            "required": false,
+            "schema": {
+              "enum": [
+                "users",
+                "organizations"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "attribution",
+            "required": false,
+            "schema": {
+              "enum": [
+                "event",
+                "user_organization"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -2058,7 +4966,7 @@
                 }
               }
             },
-            "description": "Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
+            "description": "Malformed request or `attribution` or `aggregate` or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
             "content": {
@@ -2185,7 +5093,7 @@
     },
     "/metrics/funnel": {
       "get": {
-        "description": "Canonical user timelines ordered by millisecond occurred_at then event_id, with immutable duplicates removed. At most 20 ordered steps; one event cannot satisfy repeated steps. mode=sequential (default) allows intervening events; strict requires adjacency including automatic events, accepts current-user filters over complete participant timelines, and rejects event filters. Consider every start; select maximum reach, earliest completion, earliest start, then event IDs. window is inclusive seconds from first step, default range capped at 7776000. Repeat exclude up to 20 distinct validated names; exclusions between matched steps stop a chain, and cannot overlap steps. measure=count (default) emits cumulative reach. time_to_convert emits exact nearest-rank p50_seconds/p90_seconds for reached steps >=2, from the same selected chain. One/two group dimensions use the earliest eligible first-step event even when a later attempt wins; prop dimensions require only its schema; user dimensions use participant current traits. Sequential event filters select step rows and cannot hide exclusions. Positive half-open range at most 366 days; native execution/memory limits; at most 10000 complete points or HTTP 400.",
+        "description": "aggregate=users (default) or organizations; organizations merge member timelines, excluding empty organization IDs. attribution=event or user_organization selects organization attribution with first-touch property selection; user_organization fills only missing event IDs from current resolved-user membership. Existing property attribution values retain event organization attribution. Canonical subject timelines ordered by millisecond occurred_at then event_id, with immutable duplicates removed. At most 20 steps; one event cannot satisfy repeated steps. mode=any_order opens one window at the earliest matching step and counts distinct step positions; mode=sequential (default) allows intervening events; strict requires adjacency including automatic events, accepts current-user filters over complete participant timelines, and rejects event filters. counting=uniques (default) selects maximum reach, earliest completion, earliest start, then event IDs for sequential/strict. counting=totals counts nonoverlapping entries, restarting after completion, expiry or interruption; any-order entries start at any step, others at step one. Totals add an ungrouped measure=entries point per variant and label reach rows measure=count. There is no exclusion grace period. window is inclusive seconds from first step, default range capped at 7776000. Repeat exclude up to 20 distinct validated names; exclusions between matched steps stop a chain, and cannot overlap steps. measure=count (default) emits cumulative reach. time_to_convert emits exact nearest-rank p50_seconds/p90_seconds for reached steps >=2, from the same selected chain. One/two group dimensions use the earliest eligible start (per attempt for totals). prop attribution=first_touch (default), last_touch or step:<n> uses the start, last matched event or named step; absent/unreached values are other. Validate declarations in that step, or compatible declared properties across steps when touch varies; user dimensions use participant current traits. Sequential event filters select step rows and cannot hide exclusions. Positive half-open range at most 366 days; native execution/memory limits; at most 10000 complete points or HTTP 400.",
         "operationId": "getMetricsFunnel",
         "parameters": [
           {
@@ -2231,7 +5139,8 @@
             "schema": {
               "enum": [
                 "sequential",
-                "strict"
+                "strict",
+                "any_order"
               ],
               "type": "string"
             }
@@ -2245,6 +5154,26 @@
                 "count",
                 "time_to_convert"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "counting",
+            "required": false,
+            "schema": {
+              "enum": [
+                "uniques",
+                "totals"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "attribution",
+            "required": false,
+            "schema": {
               "type": "string"
             }
           },
@@ -2271,10 +5200,22 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "aggregate",
+            "required": false,
+            "schema": {
+              "enum": [
+                "users",
+                "organizations"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -2302,7 +5243,7 @@
                 }
               }
             },
-            "description": "Malformed request or `filter` or `groupBy` or `exclude` or `measure` or `mode` or `window` or `steps` or `to` or `from`"
+            "description": "Malformed request or `aggregate` or `filter` or `groupBy` or `exclude` or `attribution` or `counting` or `measure` or `mode` or `window` or `steps` or `to` or `from`"
           },
           "401": {
             "content": {
@@ -2467,7 +5408,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -2477,7 +5419,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -2643,7 +5585,7 @@
     },
     "/metrics/organizations": {
       "get": {
-        "description": "Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, or current user:<governed trait>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
+        "description": "Explicit timeGrain=none returns one null bucket per populated group on calendar users, simple custom metrics, acquisition, events, page views and sessions. Other routes reject none. Omission preserves defaults. Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, current user:<governed trait>, organization, or org:<governed organization trait> on event sources. Repeated filter parameters are AND-combined JSON terms, JSON {or:[term,...]} groups, or shorthand dimension:op:value terms separated by | for OR (literal | requires JSON; omit value for set/unset): at most 8 groups of at most 8 terms, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.aggregate=users (default) or organizations merges member timelines and excludes empty organization IDs. The organizations route always counts organizations. attribution=event (default) preserves event organization IDs; user_organization fills only missing IDs from the resolved user current group membership. Current org:plan, org:industry, org:country and numeric org:seats traits reclassify historical reports. Experiments retain user aggregation. See Organisations in the query guide.",
         "operationId": "getMetricsOrganizations",
         "parameters": [
           {
@@ -2681,7 +5623,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -2691,10 +5634,34 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "aggregate",
+            "required": false,
+            "schema": {
+              "enum": [
+                "users",
+                "organizations"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "attribution",
+            "required": false,
+            "schema": {
+              "enum": [
+                "event",
+                "user_organization"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -2722,7 +5689,7 @@
                 }
               }
             },
-            "description": "Malformed request or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
+            "description": "Malformed request or `attribution` or `aggregate` or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
             "content": {
@@ -2849,7 +5816,7 @@
     },
     "/metrics/page-views": {
       "get": {
-        "description": "Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, or current user:<governed trait>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
+        "description": "Explicit timeGrain=none returns one null bucket per populated group on calendar users, simple custom metrics, acquisition, events, page views and sessions. Other routes reject none. Omission preserves defaults. Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, current user:<governed trait>, organization, or org:<governed organization trait> on event sources. Repeated filter parameters are AND-combined JSON terms, JSON {or:[term,...]} groups, or shorthand dimension:op:value terms separated by | for OR (literal | requires JSON; omit value for set/unset): at most 8 groups of at most 8 terms, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
         "operationId": "getMetricsPageViews",
         "parameters": [
           {
@@ -2887,7 +5854,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -2897,7 +5865,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -3061,9 +6029,267 @@
         ]
       }
     },
+    "/metrics/paths": {
+      "get": {
+        "description": "Exact canonical-user paths ordered by millisecond time then event ID. by=event (default) requires start or end; by=route selects nonbot page_view rows, collapses consecutive identical routes, and permits entry mode with neither anchor. start uses the first occurrence; end uses the last and walks backwards. Anchors are mutually exclusive. steps=1..10 (default 5) counts transitions; top=1..20 (default 10) retains K transitions per step and sums the remainder into one (other) to (other) transition. window=1..7776000 seconds (default range capped at 90 days) is inclusive from the anchor. events/exclude are comma-separated event names, at most 100 each; exclude wins. Filters select rows before anchoring. Exhausted sequences emit (end), including in reverse mode. group={step,from,to}, value=users, bucket=null; order step ascending, value descending, from then to. Positive half-open range at most 366 days; complete responses, native work budgets and global 10000-point cap.",
+        "operationId": "getMetricsPaths",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "steps",
+            "required": false,
+            "schema": {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top",
+            "required": false,
+            "schema": {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "events",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exclude",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "by",
+            "required": false,
+            "schema": {
+              "enum": [
+                "event",
+                "route"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filter",
+            "schema": {
+              "items": {
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
+                "type": "string"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricResult"
+                }
+              },
+              "application/json;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricResult"
+                }
+              }
+            },
+            "description": "Metric result"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request or `filter` or `by` or `exclude` or `events` or `window` or `top` or `steps` or `end` or `start` or `to` or `from`"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing, malformed, unknown, or revoked credential",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Bearer authentication challenge",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A valid credential lacks metrics-read permission"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "405": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Method not allowed"
+          },
+          "406": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not acceptable"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Payload too large"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Rate limited",
+            "headers": {
+              "Retry-After": {
+                "description": "Positive whole seconds before retrying",
+                "required": true,
+                "schema": {
+                  "maximum": 9223372036854775807,
+                  "minimum": -9223372036854775808,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Storage or credential store unavailable"
+          }
+        },
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "tags": [
+          "ingestion",
+          "metrics",
+          "schemas"
+        ]
+      }
+    },
     "/metrics/retention": {
       "get": {
-        "description": "Exact canonical retention over closed UTC days. mode=on (default) counts the exact offset day; on_or_after counts any day from offset through the largest requested offset, including unrequested intermediate days. cohort=window (default) means first matching activity in range; lifetime means first matching activity in retained history, not first ever. Date bounds select the observed activity interval and cohort dates. Offset 0 always emits cohort size. Omit immature on offsets; on_or_after omits nonzero offsets unless the full maximum horizon is closed by to. to cannot exceed the current UTC day. Day grain only; filters/grouping define identical populations throughout lookback. Bot rows are excluded unless includeBots=true. Up to two dimensions, eight bounded JSON filters, 32 distinct offsets 1..365, range at most 366 days and 10000 complete points.",
+        "description": "Exact canonical retention over closed UTC days. mode=on (default) counts the exact offset day; on_or_after counts any day from offset through the largest requested offset, including unrequested intermediate days. cohort=window (default) means first matching activity in range; lifetime means first matching activity in retained history, not first ever. Date bounds select the observed activity interval and cohort dates. Offset 0 always emits cohort size. Omit immature on offsets; on_or_after omits nonzero offsets unless the full maximum horizon is closed by to. to cannot exceed the current UTC day. Day grain only; filters/grouping define identical populations throughout lookback. Bot rows are excluded unless includeBots=true. Up to two dimensions, eight bounded JSON filters, 32 distinct offsets 1..365, range at most 366 days and 10000 complete points.aggregate=users (default) or organizations merges member timelines and excludes empty organization IDs. The organizations route always counts organizations. attribution=event (default) preserves event organization IDs; user_organization fills only missing IDs from the resolved user current group membership. Current org:plan, org:industry, org:country and numeric org:seats traits reclassify historical reports. Experiments retain user aggregation. See Organisations in the query guide.",
         "operationId": "getMetricsRetention",
         "parameters": [
           {
@@ -3101,7 +6327,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -3111,7 +6338,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -3156,6 +6383,30 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "in": "query",
+            "name": "aggregate",
+            "required": false,
+            "schema": {
+              "enum": [
+                "users",
+                "organizations"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "attribution",
+            "required": false,
+            "schema": {
+              "enum": [
+                "event",
+                "user_organization"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3182,7 +6433,7 @@
                 }
               }
             },
-            "description": "Malformed request or `includeBots` or `cohort` or `mode` or `days` or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
+            "description": "Malformed request or `attribution` or `aggregate` or `includeBots` or `cohort` or `mode` or `days` or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
             "content": {
@@ -3309,7 +6560,7 @@
     },
     "/metrics/revenue": {
       "get": {
-        "description": "Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, or current user:<governed trait>. Repeated filter parameters are AND-combined JSON objects with dimension/op/value (omit value for set/unset): at most 8 filters, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
+        "description": "Explicit timeGrain=none returns one null bucket per populated group on calendar users, simple custom metrics, acquisition, events, page views and sessions. Other routes reject none. Omission preserves defaults. Every metric requires a positive half-open from/to range of at most 366 days and returns at most 10000 complete points. groupBy accepts one or two distinct dimensions: event_name, source, source_service, host, route, enrichment/acquisition fields prop:<declared scalar property>, current user:<governed trait>, organization, or org:<governed organization trait> on event sources. Repeated filter parameters are AND-combined JSON terms, JSON {or:[term,...]} groups, or shorthand dimension:op:value terms separated by | for OR (literal | requires JSON; omit value for set/unset): at most 8 groups of at most 8 terms, 100 in values, 1024 UTF-8 bytes per string and 16384 decoded bytes combined. Missing/null values are unset; comparisons including neq do not match unset values. Group keys keep full dimension names and null differs from an empty string. Unsupported parameters are errors. See the documented route matrix.",
         "operationId": "getMetricsRevenue",
         "parameters": [
           {
@@ -3347,7 +6598,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -3357,7 +6609,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -3515,7 +6767,7 @@
     },
     "/metrics/sessions": {
       "get": {
-        "description": "Whole retained web sessions keyed by account/source_service/nonempty session_id; assemble before selecting the start date or UTC bucket. Defaults: measure=count, day grain, no grouping, includeBots=false. bounce_rate is exactly one page_view and no engagement divided by all selected sessions; lifecycle/identity/exposure events are not engagement. average_duration_seconds includes every selected session, including zero-duration visits, and measures last minus first observed event including page_leave. Attribute grouping/filters select first page_view, else earliest event; entry_page/exit_page come from page views. Arbitrary prop: filters/grouping are rejected. Any bot event excludes the whole session unless includeBots=true. Empty ungrouped buckets return zero; nonexistent groups are omitted. One/two dimensions, at most 8 AND filters (100 in values, 1024 UTF-8 bytes per string, 16384 decoded bytes), positive half-open range at most 366 days, at most 10000 complete points. Late arrivals and retained-history changes can change start/attribution/duration.",
+        "description": "Whole retained web sessions keyed by account/source_service/nonempty session_id; assemble before selecting the start date or UTC bucket. timeGrain=none aggregates selected sessions directly, including rates and averages; ungrouped empty whole ranges return one zero point. Defaults: measure=count, day grain, no grouping, includeBots=false. bounce_rate is exactly one page_view and no engagement divided by all selected sessions; lifecycle/identity/exposure events are not engagement. average_duration_seconds includes every selected session, including zero-duration visits, and measures last minus first observed event including page_leave. Attribute grouping/filters select first page_view, else earliest event; entry_page/exit_page come from page views. Arbitrary prop: filters/grouping are rejected. Any bot event excludes the whole session unless includeBots=true. Empty ungrouped buckets return zero; nonexistent groups are omitted. One/two dimensions, at most 8 AND filter groups with up to 8 OR terms each (100 in values, 1024 UTF-8 bytes per string, 16384 decoded bytes), positive half-open range at most 366 days, at most 10000 complete points. Late arrivals and retained-history changes can change start/attribution/duration.",
         "operationId": "getMetricsSessions",
         "parameters": [
           {
@@ -3553,7 +6805,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -3563,7 +6816,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -3780,7 +7033,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -3790,7 +7044,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -3956,7 +7210,7 @@
     },
     "/metrics/users": {
       "get": {
-        "description": "Exact canonical active subjects; identity/profile-only events are excluded. window=calendar (default), rolling7 or rolling30. Rolling windows require day grain and count [d-(N-1),d+1) UTC for each returned day d. Filters/grouping apply to the same activity population; up to two dimensions and eight bounded repeated JSON filters. Bot rows are excluded unless includeBots=true. Positive half-open range at most 366 days, to no later than the current UTC day (only closed days), at most 10000 complete points.",
+        "description": "Exact canonical active subjects; identity/profile-only events are excluded. window=calendar (default), rolling7 or rolling30. Calendar supports timeGrain=none for exact distinct subjects across the whole range. Rolling windows require day grain and count [d-(N-1),d+1) UTC for each returned day d. Filters/grouping apply to the same activity population; up to two dimensions and eight bounded repeated JSON filters. Bot rows are excluded unless includeBots=true. Positive half-open range at most 366 days, to no later than the current UTC day (only closed days), at most 10000 complete points.aggregate=users (default) or organizations merges member timelines and excludes empty organization IDs. The organizations route always counts organizations. attribution=event (default) preserves event organization IDs; user_organization fills only missing IDs from the resolved user current group membership. Current org:plan, org:industry, org:country and numeric org:seats traits reclassify historical reports. Experiments retain user aggregation. See Organisations in the query guide.",
         "operationId": "getMetricsUsers",
         "parameters": [
           {
@@ -3994,7 +7248,8 @@
                 "hour",
                 "day",
                 "week",
-                "month"
+                "month",
+                "none"
               ],
               "type": "string"
             }
@@ -4004,7 +7259,7 @@
             "name": "filter",
             "schema": {
               "items": {
-                "description": "A URL-decoded JSON object with dimension, op and value; set/unset omit value. Repeat filter for AND. Operators: eq, neq, in, contains, gt, lt, set, unset.",
+                "description": "A URL-decoded JSON term or {or:[term,...]} (1..8 non-nested terms), or shorthand dimension:op:value terms separated by | for OR. Repeat filter for AND (at most 8 groups, 16384 total decoded bytes). Literal | in values requires JSON. Operators: eq, neq, in, contains, gt, lt, set, unset; set/unset omit value.",
                 "type": "string"
               },
               "type": "array"
@@ -4029,6 +7284,30 @@
             "required": false,
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "aggregate",
+            "required": false,
+            "schema": {
+              "enum": [
+                "users",
+                "organizations"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "attribution",
+            "required": false,
+            "schema": {
+              "enum": [
+                "event",
+                "user_organization"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -4056,7 +7335,7 @@
                 }
               }
             },
-            "description": "Malformed request or `includeBots` or `window` or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
+            "description": "Malformed request or `attribution` or `aggregate` or `includeBots` or `window` or `filter` or `timeGrain` or `groupBy` or `to` or `from`"
           },
           "401": {
             "content": {

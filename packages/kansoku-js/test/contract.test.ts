@@ -31,8 +31,10 @@ const repeatableFilters: Equal<
 > = true
 
 type AcquisitionQuery = paths["/metrics/acquisition"]["get"]["parameters"]["query"]
-const acquisitionMeasure: Equal<AcquisitionQuery["measure"], "sessions" | "users" | undefined> =
-  true
+const acquisitionMeasure: Equal<
+  AcquisitionQuery["measure"],
+  "sessions" | "users" | "converted_users" | "conversion_rate" | undefined
+> = true
 const acquisitionBots: Equal<AcquisitionQuery["includeBots"], boolean | undefined> = true
 const pageViewBots: Equal<
   paths["/metrics/page-views"]["get"]["parameters"]["query"]["includeBots"],
@@ -144,11 +146,12 @@ test("activity contracts preserve closed window/cohort choices and common popula
 })
 
 test("catalog and source pin carry the governed contract", async () => {
-  expect(catalog.catalogVersion).toBe(4)
+  expect(catalog.catalogVersion).toBe(5)
   expect([...IDENTIFIER_KINDS] as string[]).toEqual(catalog.identifierKinds)
   expect(catalog.service).toBe("kansoku")
   expect(Object.keys(catalog.events)).toEqual([
     "alias",
+    "client_error",
     "experiment_viewed",
     "feature_used",
     "group",
@@ -160,6 +163,7 @@ test("catalog and source pin carry the governed contract", async () => {
     "session_start",
     "subscription_started",
     "user_registered",
+    "web_vital",
   ])
   expect(catalog.events.page_view.versions[0]?.properties).toContainEqual(
     expect.objectContaining({ name: "url", required: true, type: "string" }),
@@ -203,7 +207,8 @@ test("built-in pinned events satisfy catalog requirements", () => {
 type FunnelQuery = paths["/metrics/funnel"]["get"]["parameters"]["query"]
 type ExperimentFunnelQuery = paths["/metrics/experiments/funnel"]["get"]["parameters"]["query"]
 type ExperimentQuery = paths["/metrics/experiments"]["get"]["parameters"]["query"]
-const funnelMode: Equal<FunnelQuery["mode"], "sequential" | "strict" | undefined> = true
+const funnelMode: Equal<FunnelQuery["mode"], "sequential" | "strict" | "any_order" | undefined> =
+  true
 const funnelMeasure: Equal<FunnelQuery["measure"], "count" | "time_to_convert" | undefined> = true
 const funnelExclusions: Equal<FunnelQuery["exclude"], string[] | undefined> = true
 const experimentFunnelMode: Equal<ExperimentFunnelQuery["mode"], FunnelQuery["mode"]> = true

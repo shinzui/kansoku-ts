@@ -192,6 +192,8 @@ Cross-repository handoff list for the server maintainers of `mori://shinzui/kans
 - `docs/guides/send-events.md`, the web vitals section: "Explicit opt-in capture is planned separately" is now shipped in `kansoku-js@0.1.0` (`mori://shinzui/kansoku-ts/plans/7-capture-client-errors-and-web-vitals-with-explicit-opt-in`). Point browser producers at the SDK before the raw HTTP recipe.
 - `README.md` already describes both packages. Add the install command `npm install kansoku-js kansoku-react`.
 
+All four items were applied on 2026-11-06 in `mori://shinzui/kansoku` commit 7a75474 (the server's `guides-check` and `format-check` pass). That commit also removes "browser and React SDKs" from the spec's "Later Scope" and adds a "Browser producers" section to `docs/guides/send-events.md`.
+
 The two improvement requests this plan originally listed are no longer needed. Client clock skew is corrected server-side by `mori://shinzui/kansoku/plans/29-correct-client-timestamp-skew-and-count-ingest-rejections`, and beacon delivery is served by `mori://shinzui/kansoku/plans/39-beacon-ingest-route-for-page-exit-delivery`, both Complete and consumed by `mori://shinzui/kansoku-ts/plans/8-serve-kansoku-masterplan-5-sentat-beacon-exit-flush-bot-flag-and-identifyonce`.
 
 

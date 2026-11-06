@@ -634,7 +634,7 @@ by navigating away and asserting the server-side mock received the final batch.
 
 EP-1 through EP-5 are Complete for implementation as of 2026-10-14. Both packages are functional: kansoku-js includes browser capture, identity, exposure and persistent delivery; kansoku-react includes the provider and hooks. Final local checks pass: 59 DOM/unit tests, 2 no-DOM tests, 7 native server conformance tests, 2 Chromium mock-server tests and 2 Chromium checks against real metrics. Packed exports/types, npm publish dry runs and Node/Bun tarball imports pass. Gzip bundles are 8,588 bytes and 1,764 bytes within their 10/3 KiB budgets.
 
-EP-6 is In Progress: package checks, lockstep changesets, disabled release automation, documentation and ADR distillation are prepared. The license choice is pending. No package was published, no release workflow was enabled, and no repository visibility was changed. Historical pinned-server execution and the maintainer’s license/visibility/bootstrap/publisher decisions remain release prerequisites. Remote CI follow-up is deferred at the user’s direction; it is not blocking package implementation.
+EP-6 is In Progress: package checks, lockstep changesets, disabled release automation, documentation and ADR distillation are prepared. Both packages are licensed MIT (2026-11-06) and the repository is public. No package was published and no release workflow was enabled. Historical pinned-server execution and the maintainer’s bootstrap/publisher steps remain release prerequisites. Remote CI follow-up is deferred at the user’s direction; it is not blocking package implementation.
 
 Cross-plan gates not represented by a single child plan:
 
@@ -642,7 +642,8 @@ Cross-plan gates not represented by a single child plan:
   EP-5's Chromium smoke test observe the final batch after navigation.
 - [ ] Vendored-contract drift guard is green against a live server at the pinned commit before
   EP-6 publishes `0.1.0`.
-- [ ] Maintainer decisions recorded before the first publish: the package license, and whether
+- [x] (2026-11-06; MIT recorded in EP-6 Decision Log; `shinzui/kansoku-ts` is public) Maintainer
+  decisions recorded before the first publish: the package license, and whether
   the repository becomes public (automatic provenance) or stays private (publish without
   provenance).
 

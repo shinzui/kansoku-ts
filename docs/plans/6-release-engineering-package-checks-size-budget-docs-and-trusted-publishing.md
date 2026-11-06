@@ -73,7 +73,7 @@ allows reusing a version number).
 - [x] (2026-10-14; local changeset, pack and publish dry runs pass; remote CI deferred) M2: changesets configured with a fixed group, both manifests carry `repository` metadata,
   `.github/workflows/release.yml` exists with OIDC permissions, and a pull request's CI shows a
   green `npm pack` listing and `npm publish --dry-run` for both packages.
-- [ ] M3: the maintainer's chosen license is committed as a root `LICENSE` file and declared in
+- [x] (2026-11-06; MIT committed, `just check-packages` green, `LICENSE` present in both `npm pack` listings) M3: the maintainer's chosen license is committed as a root `LICENSE` file and declared in
   both manifests (publint rerun green); package READMEs, `docs/README.md`,
   `docs/guides/getting-started.md`, `docs/guides/react.md`, and
   `docs/guides/delivery-and-privacy.md` exist and are registered in `mori.dhall`
@@ -147,10 +147,21 @@ Changesets Action latest is v2.1.2 and its inputs differ from the plan’s v1 sk
   package page and consumers' compliance tooling reads the `license` field.
   Date: 2026-10-14
 
+- Decision: License both packages under MIT (`Copyright (c) 2026 Nadeem Bitar`). The
+  maintainer stated no preference and delegated the choice. A root `LICENSE` holds the text,
+  each package directory carries a copy, both manifests declare `"license": "MIT"` and list
+  `LICENSE` in `files`.
+  Rationale: MIT is the prevailing license for npm browser SDKs and imposes no notice or
+  patent-clause obligations on applications that bundle a dependency-free client. It is
+  compatible with the Apache-2.0 `web-vitals` code already attributed in
+  `packages/kansoku-js/THIRD_PARTY_NOTICES`. The server repository (`mori://shinzui/kansoku`)
+  has no license to mirror.
+  Date: 2026-11-06
+
 
 ## Outcomes & Retrospective
 
-Both packages pass publint and attw packed checks, publish dry runs, a broken-export negative probe, and installation/import from tarballs in a scratch consumer (npm installed the tarballs; both Bun and Node imported them). Changesets lists both packages for 0.1.0 from the fixed group. Guides and package references are registered in Mori. Durable context is covered by ADR-1 (contracts), ADR-2 (delivery/lifecycle), ADR-3 (identity/session), ADR-6 (two packages/ESM) and ADR-7 (lockstep/trusted publishing), plus capture and React boundary ADRs. License selection is pending; no LICENSE text has been invented and nothing has been published. Exact pinned-server execution, visibility, bootstrap/trusted publisher setup and explicit publish authorization remain release preconditions.
+Both packages pass publint and attw packed checks, publish dry runs, a broken-export negative probe, and installation/import from tarballs in a scratch consumer (npm installed the tarballs; both Bun and Node imported them). Changesets lists both packages for 0.1.0 from the fixed group. Guides and package references are registered in Mori. Durable context is covered by ADR-1 (contracts), ADR-2 (delivery/lifecycle), ADR-3 (identity/session), ADR-6 (two packages/ESM) and ADR-7 (lockstep/trusted publishing), plus capture and React boundary ADRs. Both packages are licensed MIT (2026-11-06) and the GitHub repository is public, so automatic provenance applies. Nothing has been published. Exact pinned-server execution, bootstrap/trusted publisher setup and explicit publish authorization remain release preconditions.
 
 
 ## Context and Orientation

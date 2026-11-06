@@ -9,7 +9,7 @@
     "react"
   ],
   "homepage": "https://github.com/shinzui/kansoku-ts#readme",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/shinzui/kansoku-ts.git",
@@ -18,7 +18,8 @@
   "files": [
     "dist",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,

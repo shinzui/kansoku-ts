@@ -8,7 +8,7 @@
     "kansoku"
   ],
   "homepage": "https://github.com/shinzui/kansoku-ts#readme",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/shinzui/kansoku-ts.git",
@@ -18,7 +18,8 @@
     "dist",
     "README.md",
     "CHANGELOG.md",
-    "THIRD_PARTY_NOTICES"
+    "THIRD_PARTY_NOTICES",
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,

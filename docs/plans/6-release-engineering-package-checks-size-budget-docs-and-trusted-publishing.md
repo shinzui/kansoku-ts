@@ -84,9 +84,23 @@ allows reusing a version number).
   `kansoku-react@0.1.0` are live on npm (`npm view` shows `0.1.0`), a scratch Bun project
   outside the repository installs both and imports them, and the cross-repository handoff list
   for the server maintainers is recorded in this plan.
+  - (2026-11-06) Checklist items 1–3 confirmed with the user: drift guard evidence (see the
+    MasterPlan gate), MIT license committed (c963dae), repository public. Versions advanced
+    in 60cc60a.
+  - (2026-11-06T19:59Z / 20:02Z) Item 4: bootstrap `npm publish --access public` from a clean
+    `master` build. Live at https://www.npmjs.com/package/kansoku-js and
+    https://www.npmjs.com/package/kansoku-react; registry `latest` is `0.1.0` (license MIT)
+    for both. Clean npm and Bun consumers outside the repository install both and import
+    them under Node and Bun; `LICENSE` ships; `npm audit signatures` verifies registry
+    signatures.
+  - [ ] Item 5: register trusted publishers (user `shinzui`, repository `kansoku-ts`,
+    workflow `release.yml`, no environment) for both packages, then set
+    `KANSOKU_RELEASE_ENABLED=true`. Cross-repository handoff list still to be written.
 
 
 ## Surprises & Discoveries
+
+The first publish of each new name also created a public `0.0.0-stage` stub version ("Temporary package placeholder for staged publishing") although a plain `npm publish` from npm 10.9.9 was used and `npm stage list` showed nothing staged. The real `0.1.0` was published directly and is `latest`. For about five minutes the CDN-cached packument and npm's local cache showed only the stub, so `npm install` reported `notarget` until `--prefer-online`. The maintainer's `minimum-release-age` (7 days) also blocks Bun installs of the new versions until 2026-11-13 unless overridden; consumers with similar policies will see the same delay.
 
 Changesets Action latest is v2.1.2 and its inputs differ from the plan’s v1 sketch: version-script, publish-script, commit-message and pr-title are used. The action is pinned at its release commit and the workflow stays disabled behind KANSOKU_RELEASE_ENABLED until explicit activation. A scratch versioning run advances both manifests to 0.1.0 and the concrete peer to ^0.1.0. Bun’s local-file peer resolution tried the unpublished npm name, so npm was used to install pre-release tarballs before testing both runtimes. Runtime version exports read manifest metadata so changeset version cannot leave stale constants. Root typecheck builds package exports first, allowing a clean clone to resolve workspace declaration imports. attw esm-only also ignores node10 resolution; Node import/require and packed consumer checks independently verify supported runtimes.
 

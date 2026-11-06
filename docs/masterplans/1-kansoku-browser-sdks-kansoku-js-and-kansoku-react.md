@@ -640,7 +640,10 @@ Cross-plan gates not represented by a single child plan:
 
 - [x] Exit-flush representative check passes in both forms: EP-2's happy-dom unit test and
   EP-5's Chromium smoke test observe the final batch after navigation.
-- [ ] Vendored-contract drift guard is green against a live server at the pinned commit before
+- [x] (2026-11-06; EP-7's live suite passed with zero skips against `mori://shinzui/kansoku`
+  at c77ebba; `docs/contracts/events.json` is unchanged from the pin 021ec1a and
+  `docs/api/openapi.json` differs only in read-side `/metrics/*` descriptions the SDK does not
+  consume) Vendored-contract drift guard is green against a live server at the pinned commit before
   EP-6 publishes `0.1.0`.
 - [x] (2026-11-06; MIT recorded in EP-6 Decision Log; `shinzui/kansoku-ts` is public) Maintainer
   decisions recorded before the first publish: the package license, and whether

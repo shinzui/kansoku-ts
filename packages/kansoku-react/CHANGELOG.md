@@ -1,5 +1,12 @@
 # kansoku-react
 
+## 0.1.1
+
+### Patch Changes
+
+- 68a2e57: Fix KansokuProvider crashing in production by compiling the package with the production JSX runtime.
+- kansoku-js@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes

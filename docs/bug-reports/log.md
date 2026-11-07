@@ -1,5 +1,9 @@
 # Bundle Update Log
 
+## 2026-11-07
+
+- **Addition**: Record BUG-2 and BUG-3 from `mori://tan/tan-ng-labs/plans/17-replace-the-portal-s-vendored-kansoku-sdk-with-the-published-npm-packages`. BUG-2: kansoku-react 0.1.0's `dist/index.js` imports `jsxDEV` from `react/jsx-dev-runtime`, which React's production build exports as undefined, so `KansokuProvider` throws `TypeError: w is not a function` under `NODE_ENV=production`. BUG-3: the same single-module bundle statically imports `createKansoku`, so importing only `KansokuContext` puts all of kansoku-js in the importer's entry chunk and stops its own `import("kansoku-js")` from splitting.
+
 ## 2026-10-20
 
 - **Update**: BUG-1 is fixed: builds require bun >=1.4.2, scripts/build.ts refuses older bun and verifies bundle exports, and `just check` runs the kansoku-js package smoke (docs/plans/9-guard-sdk-builds-against-incomplete-bundles-and-require-bun-1-4-2.md).

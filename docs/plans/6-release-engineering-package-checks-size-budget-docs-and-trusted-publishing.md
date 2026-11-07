@@ -128,7 +128,9 @@ The merged version PR advances both packages to 0.1.1. Publish run 42420176998 t
 E404 for kansoku-js before either package was published. setup-node v6's registry-url wrote
 token authentication and exported its placeholder NODE_AUTH_TOKEN. Remove registry-url and
 check the npm version inside the Nix publication shell before retrying (FRIC-3, pending
-validation). The maintainer explicitly authorized this patch release on 2026-11-07.
+validation). Run 42420522505 confirmed npm 11.21.2 but still failed with ENEEDAUTH, so
+removing the placeholder alone did not resolve publication. Inspect the package's saved
+publisher configuration and expose redacted npm OIDC diagnostics on failure. The maintainer explicitly authorized this patch release on 2026-11-07.
 
 The first publish of each new name also created a public `0.0.0-stage` stub version ("Temporary package placeholder for staged publishing") although a plain `npm publish` from npm 10.9.9 was used and `npm stage list` showed nothing staged. The real `0.1.0` was published directly and is `latest`. For about five minutes the CDN-cached packument and npm's local cache showed only the stub, so `npm install` reported `notarget` until `--prefer-online`. The maintainer's `minimum-release-age` (7 days) also blocks Bun installs of the new versions until 2026-11-13 unless overridden; consumers with similar policies will see the same delay.
 

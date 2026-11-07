@@ -31,9 +31,9 @@ jobs:
         run: |
           npm install --global npm@11
           nix develop --command node --version
-          npm_version="$(nix develop --command npm --version)"
+          npm_version="$(nix develop --command npm --version | tail -n 1)"
           echo "Publishing with npm $npm_version"
-          node -e 'const [major, minor, patch] = process.argv[1].split(".").map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) process.exit(1)' "$npm_version"
+          node -e 'const [major, minor, patch] = process.argv[1].split(".").map(Number); if (![major, minor, patch].every(Number.isInteger) || major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) process.exit(1)' "$npm_version"
       - run: nix develop --command just ci
       - uses: changesets/action@66d7d1ddafddf1ef45f98ee51a7496f9cdadb2f4 # v2.1.2
         with:
@@ -49,3 +49,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: ${{ vars.KANSOKU_NPM_PROVENANCE || 'true' }}
+      - name: Diagnose npm OIDC failures
+        if: failure()
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir, readFile } from "node:fs/promises"
+          import { join } from "node:path"
+          for (const key of ["GITHUB_ACTIONS", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN"]) {
+            console.log(key + " present: " + Boolean(process.env[key]))
+          }
+          const logs = join(process.env.HOME, ".npm", "_logs")
+          for (const name of await readdir(logs).catch(() => [])) {
+            if (!name.endsWith("-debug-0.log")) continue
+            const content = await readFile(join(logs, name), "utf8")
+            for (const line of content.split("\n")) {
+              if (!line.includes("verbose oidc ") && !line.includes("silly oidc ")) continue
+              console.log(line.replace(/eyJ[A-Za-z0-9_.-]+/g, "[redacted]").replace(/npm_[A-Za-z0-9]+/g, "[redacted]"))
+            }
+          }
+          NODE

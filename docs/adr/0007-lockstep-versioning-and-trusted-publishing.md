@@ -40,7 +40,7 @@ publish workflow on GitHub; a local package check cannot prove these repository 
 
 For OIDC publishing, omit setup-node's registry-url setting. With setup-node v6 it writes
 an explicit token entry and exports a placeholder NODE_AUTH_TOKEN even when no npm secret
-exists, interfering with tokenless publication. Verify npm >=11.5.1 inside the actual
+exists. Omitting it keeps the workflow free of static token configuration. Verify npm >=11.5.1 inside the actual
 Nix publication shell before running Changesets, as installing npm outside that shell does
 not by itself prove which executable will publish.
 

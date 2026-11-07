@@ -125,6 +125,14 @@ allows reusing a version number).
 
 ## Surprises & Discoveries
 
+Cache recovery (2026-11-07): Removing the release cache forced a cold validator installation
+that remained in progress for over ten minutes. A Linux dry run reported a local CLI build
+and 614 MiB of dependencies to download. Restore GitHub Actions caching with
+`use-gha-cache: enabled` and explicitly disable the unused FlakeHub backend with
+`use-flakehub: disabled`, using the existing v13 action's documented inputs. Cancel the
+run before publication and retry with the existing validator cache. This supersedes the
+earlier decision to remove the cache entirely.
+
 Publisher diagnosis (2026-11-07): After browser 2FA, `npm trust list kansoku-js` returned
 `No trust configurations found for package (kansoku-js)`. The missing per-package trust
 configuration explains the authorization failure; removing setup-node's token entry alone

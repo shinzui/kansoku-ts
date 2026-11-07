@@ -18,6 +18,10 @@ jobs:
         with:
           fetch-depth: 0
       - uses: DeterminateSystems/nix-installer-action@v21
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
+        with:
+          use-gha-cache: enabled
+          use-flakehub: disabled
       - uses: actions/setup-node@v6
         with:
           node-version: 24

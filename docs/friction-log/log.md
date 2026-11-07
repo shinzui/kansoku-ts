@@ -2,6 +2,7 @@
 
 ## 2026-11-07
 
+- **Addition**: FRIC-4 records detour tooling friction with https://github.com/DeterminateSystems/magic-nix-cache-action: Cache cleanup delays access to failed publication logs
 - **Addition**: FRIC-3 records detour tooling friction with https://github.com/actions/setup-node: setup-node token configuration prevents OIDC publishing
 - **Update**: FRIC-2 resolved: Resolve the release PR policy block after observing a successful Changesets workflow.
 - **Addition**: FRIC-2 records detour environment friction with https://github.com/shinzui/kansoku-ts: Repository policy blocks Changesets release PR creation

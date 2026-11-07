@@ -207,6 +207,29 @@ Changesets Action latest is v2.1.2 and its inputs differ from the plan’s v1 sk
 
 ## Outcomes & Retrospective
 
+Release attempt (2026-11-07): The maintainer authorized the 0.1.1 patch release. Changesets
+opened [PR 1](https://github.com/shinzui/kansoku-ts/pull/1) after the repository's Actions
+PR-creation setting was enabled; the version PR was reviewed and merged as d672454.
+[CI on the workflow repair](https://github.com/shinzui/kansoku-ts/actions/runs/42420522495)
+passed. Both publication attempts (runs 42420176998 and 42420522505) failed on kansoku-js
+authorization before either 0.1.1 package was published. Removing setup-node's placeholder
+token configuration was insufficient; npm 11.21.2 is confirmed in the publication shell.
+
+[Diagnostic run 42420863425](https://github.com/shinzui/kansoku-ts/actions/runs/42420863425)
+passed just ci but failed publication; its redacted OIDC diagnostic step completed.
+Cache cleanup then stalled and cancellation, followed by force cancellation, was requested
+to retrieve its logs. npm's interactive kansoku-js trust inspection required browser 2FA;
+the requests expired without completing. Resume by retrieving the diagnostic run's logs,
+authenticating a fresh `npm trust list kansoku-js` request, correcting the publisher
+configuration if needed, and rerunning release.yml at master. Both manifests are already
+0.1.1; do not bump or republish a version without first rechecking npm. Finish with registry
+consumer rendering, signature/provenance verification, and M4/parent status updates.
+
+FRIC-2 in docs/friction-log/ is resolved by the observed successful PR-creation run.
+FRIC-3 remains logged because removing token configuration did not resolve npm authorization.
+FRIC-4 remains logged because post-action cache cleanup delayed diagnostics; no cache fix
+has been claimed. M4 remains incomplete.
+
 Both packages pass publint and attw packed checks, publish dry runs, a broken-export negative probe, and installation/import from tarballs in a scratch consumer (npm installed the tarballs; both Bun and Node imported them). Changesets lists both packages for 0.1.0 from the fixed group. Guides and package references are registered in Mori. Durable context is covered by ADR-1 (contracts), ADR-2 (delivery/lifecycle), ADR-3 (identity/session), ADR-6 (two packages/ESM) and ADR-7 (lockstep/trusted publishing), plus capture and React boundary ADRs. Both packages are licensed MIT (2026-11-06) and the GitHub repository is public, so automatic provenance applies. `kansoku-js@0.1.0` and `kansoku-react@0.1.0` were bootstrap-published on 2026-11-06 and verified from clean npm and Bun consumers: the scratch smoke prints `0.1.0 function function` and Node 22.23.3 `require('kansoku-js')` prints `0.1.0`. The kansoku-react trusted publisher was registered successfully on 2026-11-07
 (configuration `e6a44dab-5df1-4f42-8a2e-7e364c67ddc2`). Explicit confirmation of
 kansoku-js's configuration remains before closing M4 item 5; verify provenance on the first

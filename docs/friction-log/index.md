@@ -9,3 +9,5 @@ okf_version: "0.2"
 # Friction Entry
 
 - [Shared test helper cleanup is scoped to its first importer](1-shared-test-helper-cleanup-is-scoped-to-its-first-importer.md) - Bun test cached the capture helper hook in its first importing file, leaving later capture clients active between tests.
+- [Repository policy blocks Changesets release PR creation](2-repository-policy-blocks-changesets-release-pr-creation.md) - GitHub Actions completed package checks but repository policy prevented the Changesets action from opening its version PR.
+- [setup-node token configuration prevents OIDC publishing](3-setup-node-token-configuration-prevents-oidc-publishing.md) - The release workflow reached npm publishing but setup-node registry configuration injected a placeholder token and npm rejected publication with E404.

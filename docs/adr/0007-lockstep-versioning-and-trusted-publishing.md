@@ -5,7 +5,7 @@ description: Prepare both packages as a fixed release group with tokenless publi
 docId: ADR-7
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-10-15T04:18:00Z
+timestamp: 2026-11-07T22:19:00Z
 generated:
   by: process:codex
   at: 2026-10-15T04:18:00Z
@@ -17,7 +17,8 @@ generated:
 
 The React binding peers on the browser package. npm publish does not rewrite workspace
 ranges, and provenance/trusted publishing require npm rather than Bun's publisher.
-The packages have not been published, and license/visibility decisions belong to the maintainer.
+The initial 0.1.0 packages were bootstrap-published with MIT licensing from the public
+repository. Subsequent releases use the registered GitHub Actions trusted publishers.
 
 ## Decision
 
@@ -29,7 +30,19 @@ Build and check packed tarballs before release. Use npm >=11.5.1 with GitHub OID
 id-token write permission. The workflow pins Changesets Action v2.1.2 at its release commit
 and uses its renamed version-script, publish-script, commit-message and pr-title inputs.
 It remains disabled unless KANSOKU_RELEASE_ENABLED is explicitly enabled after preconditions.
-No token is stored by this project.
+No npm publishing token is stored by this project.
+
+The repository must allow GitHub Actions to create pull requests, in addition to the
+workflow's contents and pull-requests write permissions. Otherwise Changesets can create
+its version branch but cannot open the release PR. Retain read-only default workflow
+permissions and grant write access explicitly in release.yml. Verify the version PR and
+publish workflow on GitHub; a local package check cannot prove these repository settings.
+
+For OIDC publishing, omit setup-node's registry-url setting. With setup-node v6 it writes
+an explicit token entry and exports a placeholder NODE_AUTH_TOKEN even when no npm secret
+exists, interfering with tokenless publication. Verify npm >=11.5.1 inside the actual
+Nix publication shell before running Changesets, as installing npm outside that shell does
+not by itself prove which executable will publish.
 
 The maintainer chooses the license and repository visibility before publication. Automatic
 provenance requires a public repository. If the repository stays private, the maintainer

@@ -121,6 +121,15 @@ allows reusing a version number).
 
 ## Surprises & Discoveries
 
+Release validation (2026-11-07): GitHub run 42406855302 passed checks but failed to open the
+Changesets PR because repository policy disabled Actions PR creation. Enabling that setting
+while retaining read-only defaults made run 42419849099 pass and create PR 1 (FRIC-2, resolved).
+The merged version PR advances both packages to 0.1.1. Publish run 42420176998 then failed with
+E404 for kansoku-js before either package was published. setup-node v6's registry-url wrote
+token authentication and exported its placeholder NODE_AUTH_TOKEN. Remove registry-url and
+check the npm version inside the Nix publication shell before retrying (FRIC-3, pending
+validation). The maintainer explicitly authorized this patch release on 2026-11-07.
+
 The first publish of each new name also created a public `0.0.0-stage` stub version ("Temporary package placeholder for staged publishing") although a plain `npm publish` from npm 10.9.9 was used and `npm stage list` showed nothing staged. The real `0.1.0` was published directly and is `latest`. For about five minutes the CDN-cached packument and npm's local cache showed only the stub, so `npm install` reported `notarget` until `--prefer-online`. The maintainer's `minimum-release-age` (7 days) also blocks Bun installs of the new versions until 2026-11-13 unless overridden; consumers with similar policies will see the same delay.
 
 Changesets Action latest is v2.1.2 and its inputs differ from the plan’s v1 sketch: version-script, publish-script, commit-message and pr-title are used. The action is pinned at its release commit and the workflow stays disabled behind KANSOKU_RELEASE_ENABLED until explicit activation. A scratch versioning run advances both manifests to 0.1.0 and the concrete peer to ^0.1.0. Bun’s local-file peer resolution tried the unpublished npm name, so npm was used to install pre-release tarballs before testing both runtimes. Runtime version exports read manifest metadata so changeset version cannot leave stale constants. Root typecheck builds package exports first, allowing a clean clone to resolve workspace declaration imports. attw esm-only also ignores node10 resolution; Node import/require and packed consumer checks independently verify supported runtimes.

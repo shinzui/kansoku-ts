@@ -22,14 +22,18 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
       - name: Install the pinned ADR validator
         run: >-
           nix profile install github:shinzui/okf/beb89ab3bcbb705276397060d95f5580f72fbe83#okf-cli
           --extra-substituters https://shinzui.cachix.org
           --extra-trusted-public-keys shinzui.cachix.org-1:QEmAoJrA9WwLP0uxfDgktLi2BRrcvQQWdz8NzcMg4/E=
       - name: Ensure npm supports trusted publishing
-        run: npm install --global npm@11
+        run: |
+          npm install --global npm@11
+          nix develop --command node --version
+          npm_version="$(nix develop --command npm --version)"
+          echo "Publishing with npm $npm_version"
+          node -e 'const [major, minor, patch] = process.argv[1].split(".").map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) process.exit(1)' "$npm_version"
       - run: nix develop --command just ci
       - uses: changesets/action@66d7d1ddafddf1ef45f98ee51a7496f9cdadb2f4 # v2.1.2
         with:

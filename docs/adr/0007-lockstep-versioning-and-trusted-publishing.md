@@ -49,6 +49,10 @@ provenance requires a public repository. If the repository stays private, the ma
 must explicitly set KANSOKU_NPM_PROVENANCE=false and accept the absence of provenance.
 The first publish is an interactive maintainer bootstrap; register trusted publishers for
 shinzui/kansoku-ts, workflow release.yml, on both npm package settings pages afterward.
+Trust is configured per npm package: registering one package does not authorize the other.
+When npm reports E404 or ENEEDAUTH during OIDC publication, inspect each package's saved
+publisher configuration with authenticated `npm trust list`; a missing publisher can
+produce these errors even when the workflow uses the correct npm version.
 
 ## Alternatives considered
 

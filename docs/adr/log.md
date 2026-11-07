@@ -2,6 +2,7 @@
 
 ## 2026-11-07
 
+- **Update**: ADR-7: verify trusted publishing separately for each npm package after diagnosing missing kansoku-js configuration.
 - **Update**: ADR-7: require repository permission for Changesets release PR creation and record bootstrap publication.
 - **Update**: ADR-6: Require production JSX output and built React rendering checks
 

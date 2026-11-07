@@ -116,10 +116,22 @@ allows reusing a version number).
     the other registration in the browser; kansoku-js's configuration still needs explicit
     confirmation before item 5 and M4 are marked complete. The first automatic release's
     provenance remains to be verified.
+  - (2026-11-07) Browser 2FA inspection confirmed kansoku-js had no trust configuration.
+    Registered it successfully as `072a65d3-f2f0-4137-b50e-4006e4248d7e`: GitHub Actions,
+    repository `shinzui/kansoku-ts`, workflow `release.yml`, no environment, permissions
+    `publish, stage publish`. Both package publisher registrations are now confirmed.
   - (2026-11-06) Cross-repository handoff list recorded in Outcomes & Retrospective.
 
 
 ## Surprises & Discoveries
+
+Publisher diagnosis (2026-11-07): After browser 2FA, `npm trust list kansoku-js` returned
+`No trust configurations found for package (kansoku-js)`. The missing per-package trust
+configuration explains the authorization failure; removing setup-node's token entry alone
+could not fix it. Register kansoku-js using the same repository/workflow as kansoku-react.
+The cancelled diagnostic run's logs were unavailable afterward. Remove the optional
+magic-nix-cache-action from the release job because its cleanup stalled access to completed
+diagnostics for several minutes; retain Nix installation and the package checks.
 
 Release validation (2026-11-07): GitHub run 42406855302 passed checks but failed to open the
 Changesets PR because repository policy disabled Actions PR creation. Enabling that setting

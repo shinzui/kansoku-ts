@@ -5,7 +5,7 @@ description: Publish a dependency-free browser SDK and a thin React binding with
 docId: ADR-6
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-11-06T15:21:31Z
+timestamp: 2026-11-07T19:30:00Z
 generated:
   by: process:codex
   at: 2026-10-15T04:18:00Z
@@ -36,6 +36,19 @@ of 10 KiB for kansoku-js and 3 KiB for kansoku-react.
 Builds require bun >=1.4.2, declared as engines.bun in the private root package.json and
 enforced by scripts/build.ts before it bundles. The build imports each bundle and compares its
 runtime exports, by name and typeof, with the source entry module before it reports success.
+
+Compile kansoku-react with the production JSX runtime, react/jsx-runtime, independent of
+the builder's NODE_ENV. scripts/build.ts defines process.env.NODE_ENV as the production
+literal for that package; on the supported Bun 1.4.2 this selects the normal JSX transform.
+This definition does not specialize usePageView's optional-chain environment check, whose
+runtime warning behavior remains unchanged. Keep React and kansoku-js external.
+
+The standard package-smoke gate renders the built React provider in fresh Node processes
+started with NODE_ENV=development and NODE_ENV=production. Exercise both options and
+caller-owned client forms, verify the supplied context and hook client identity, and
+require the expected HTML without network calls. Check the first-position use-client
+banner and reject react/jsx-dev-runtime. Import and export comparisons alone cannot
+detect a JSX helper that becomes undefined only when React loads in production.
 
 ## Alternatives considered
 

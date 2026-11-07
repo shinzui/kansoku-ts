@@ -42,9 +42,11 @@ check: typecheck lint format-check ssr-smoke package-smoke check-contracts check
 ssr-smoke:
     bun scripts/ssr-smoke.ts
 
-# Deliver events from the built kansoku-js bundle to a local stub server
+# Check built event delivery and React provider rendering
 package-smoke: build
     bun packages/kansoku-js/scripts/smoke.ts
+    NODE_ENV=development node packages/kansoku-react/scripts/smoke.mjs
+    NODE_ENV=production node packages/kansoku-react/scripts/smoke.mjs
 
 build:
     bun scripts/build.ts packages/kansoku-js

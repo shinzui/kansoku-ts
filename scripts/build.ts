@@ -30,6 +30,10 @@ const result = await Bun.build({
   naming: { entry: "index.js", chunk: "[name]-[hash].js" },
   sourcemap: "linked",
   minify: true,
+  define:
+    manifest.name === "kansoku-react"
+      ? { "process.env.NODE_ENV": JSON.stringify("production") }
+      : undefined,
   external,
   banner,
 })

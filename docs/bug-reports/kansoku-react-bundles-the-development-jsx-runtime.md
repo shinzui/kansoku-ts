@@ -6,7 +6,15 @@ generated:
   by: process:claude-code
   at: "2026-11-07T16:20:00Z"
 bugId: BUG-2
-status: reported
+status: fixed
+fixedVersion: unreleased
+resolution: >-
+  scripts/build.ts defines process.env.NODE_ENV as the production literal for kansoku-react,
+  selecting react/jsx-runtime independently of the build environment. The package-smoke gate
+  renders both provider forms from dist in fresh development and production Node processes,
+  checking context identity, HTML and no network activity. Verified by
+  docs/plans/10-build-kansoku-react-with-the-production-jsx-runtime.md; a patch changeset
+  prepares the fixed release group. Published 0.1.0 remains affected.
 severity: unusable
 workaround: >-
   Do not render KansokuProvider in a production build. Create the client with kansoku-js's

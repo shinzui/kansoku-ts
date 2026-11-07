@@ -21,6 +21,11 @@ provenance:
       at: 2026-11-07T19:20:58Z
       mode: "update"
       note: "Address review findings: preserve usePageView runtime semantics and require direct provider-context identity in the smoke."
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-11-07T19:28:43Z
+      mode: "implement"
+      note: "Implement deterministic production JSX compilation and built-provider smoke; verify release preparation."
 ---
 
 # Build kansoku-react with the production JSX runtime
@@ -48,12 +53,21 @@ operation; completion here means a tested fix and release preparation in this re
 
 ## Progress
 
-- [ ] M1: Builds made with NODE_ENV unset, development, or production all emit the production
+- [x] M1 (2026-11-07): Builds made with NODE_ENV unset, development, or production all emit the production
   JSX runtime, and the resulting provider renders `child` in a fresh production Node process.
-- [ ] M2: `just package-smoke` checks the built React provider and context in fresh development
+  Verified all three real builds on Bun 1.4.2; the production smoke returned the expected
+  `<span>child</span>` and verified context identity after each build.
+- [x] M2 (2026-11-07): `just package-smoke` checks the built React provider and context in fresh development
   and production Node processes; the production check demonstrably rejects the original build.
-- [ ] M3: `just ci` passes, BUG-2 records the verified unreleased fix, relevant ADRs capture the
+  Negative control (definition removed, development build) exited 1 on the runtime assertion;
+  restored build passed both modes and the core smoke accepted three events. Focused coverage
+  passed 20 tests (one DOM-mode SSR skip) plus the separate no-DOM SSR test.
+- [x] M3 (2026-11-07): `just ci` passes, BUG-2 records the verified unreleased fix, relevant ADRs capture the
   distribution contract, and a patch changeset prepares the fixed package group for release.
+  `nix develop --no-write-lock-file -c just ci` exited zero: 104 source tests passed,
+  13 environment/live tests skipped, and all three separate no-DOM tests passed.
+  Type, package, size, formatting, contract and strict documentation checks passed.
+  Changesets reports patch releases for kansoku-js and kansoku-react; `git diff --check` passed.
 
 
 ## Surprises & Discoveries
@@ -90,7 +104,21 @@ chose to proceed without an Intention ID; this is a standalone repair plan.
 
 ## Outcomes & Retrospective
 
-(To be filled during and after implementation.)
+Completed 2026-11-07. The real build now selects react/jsx-runtime in all three ambient
+build environments, and fresh Node consumers render both provider ownership forms with the
+expected context, HTML and zero fetch calls. Removing only the definition reproduced a
+failing smoke (exit 1); restoring it made the integrated package gate pass. Full CI passed
+with the locked Bun 1.4.2, Node 22.23.3 and React 19.3.0 toolchain.
+
+ADR-6 now records deterministic production JSX compilation and the fresh-process rendering
+gate, including the distinction between JSX compilation and usePageView's runtime warning.
+ADR-5's binding contract remains intact. BUG-2 records an unreleased fix, and the patch
+changeset prepares both packages through the existing fixed group. No dependencies,
+public APIs or manifests changed. Registry publication remains a separate release operation;
+published 0.1.0 is still affected.
+
+No implementation friction met the recording threshold, and the plan's logged-friction
+query returned no entries to triage.
 
 
 ## Context and Orientation

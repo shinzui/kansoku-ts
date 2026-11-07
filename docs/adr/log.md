@@ -1,5 +1,9 @@
 # Bundle Update Log
 
+## 2026-11-07
+
+- **Update**: ADR-6: Require production JSX output and built React rendering checks
+
 ## 2026-11-06
 
 - **Update**: ADR-4 and ADR-6: record explicit bounded diagnostics, document-scoped finalization, shared delivery and deferred measurement distribution.

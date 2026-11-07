@@ -9,6 +9,18 @@ provenance:
     model: "gpt-6.1-sol"
     harness: "codex-cli"
     at: 2026-11-07T16:13:32Z
+  reviews:
+    - model: "gpt-6-astra"
+      harness: "codex-cli"
+      at: 2026-11-07T19:20:58Z
+      verdict: "changes-requested"
+      note: "Verified build probes and ADR/CI contracts; correct usePageView specialization claim and distinguish provider context from the server fallback."
+  revisions:
+    - model: "gpt-6-astra"
+      harness: "codex-cli"
+      at: 2026-11-07T19:20:58Z
+      mode: "update"
+      note: "Address review findings: preserve usePageView runtime semantics and require direct provider-context identity in the smoke."
 ---
 
 # Build kansoku-react with the production JSX runtime
@@ -46,7 +58,16 @@ operation; completion here means a tested fix and release preparation in this re
 
 ## Surprises & Discoveries
 
-(None yet.)
+Review discovery (2026-11-07): In-memory builds on Bun 1.4.2 with the proposed definition
+select `react/jsx-runtime` with NODE_ENV unset, development, and production. However, Bun
+leaves `process.env?.NODE_ENV` and its `typeof process` guard in `usePageView` unchanged.
+The definition does not specialize this optional-chain expression. Preserve the existing
+warning behavior; changing it is outside this repair.
+
+Review discovery (2026-11-07): `useKansoku()` returns a module-level no-op client when
+there is no context during server rendering. An opted-out assertion alone therefore cannot
+prove that the options-form provider supplied context. Read `KansokuContext` directly in
+the smoke's consumer as well, and compare its client with the hook result.
 
 
 ## Decision Log
@@ -151,10 +172,11 @@ define: manifest.name === "kansoku-react"
 ```
 
 This replaces the named environment expression with a literal during compilation and, on
-Bun 1.4.2, selects the production JSX transform. It also specializes the environment
-comparison in `packages/kansoku-react/src/hooks/usePageView.ts`; the distributed artifact
-is a production build even when consumed from a development application. Source tests keep
-their existing development behavior. Do not rely on the caller setting NODE_ENV or modify
+Bun 1.4.2, selects the production JSX transform. It does not replace the optional-chain environment
+comparison in `packages/kansoku-react/src/hooks/usePageView.ts` on Bun 1.4.2; retain that
+hook's existing runtime warning behavior and do not claim that the entire bundle has had
+its development diagnostics removed. The JSX transform uses the normal runtime even when
+consumed from a development application. Source tests keep their existing behavior. Do not rely on the caller setting NODE_ENV or modify
 the process environment at runtime. Do not rewrite the provider to bypass JSX or change
 provider/context ownership. Retain external peers, the banner, declarations, maps, and
 export verification.
@@ -168,8 +190,8 @@ import. This closes the actual producer/consumer interaction before adding autom
 
 
 Create `packages/kansoku-react/scripts/smoke.mjs`, a plain Node ESM script. Import
-`createElement` from `react`, `renderToString` from `react-dom/server`, and `KansokuProvider`,
-`useKansoku`, and `createNoopClient` from `../dist/index.js`. Use Node's strict assertions;
+`createElement` and `useContext` from `react`, `renderToString` from `react-dom/server`, and
+`KansokuProvider`, `KansokuContext`, `useKansoku`, and `createNoopClient` from `../dist/index.js`. Use Node's strict assertions;
 do not import TS sources or a test-library renderer. Require NODE_ENV to be either
 development or production and assert `typeof window === "undefined"`.
 
@@ -177,10 +199,12 @@ Read `../dist/index.js` relative to `import.meta.url`; assert that its first sta
 `"use client"`, that it refers to `react/jsx-runtime`, and that it has no
 `react/jsx-dev-runtime` reference. Avoid assertions about minified local variable names.
 Render a provider using the options form from the README and assert the exact output
-`<span>child</span>`. Have its child call `useKansoku()` and assert that the server client
-is opted out, confirming that the provider actually supplies its context. In a second
-render, pass a caller-owned client created with `createNoopClient()` and assert that
-`useKansoku()` returns that exact object. Install a throwing fetch stub and count calls
+`<span>child</span>`. Have its child call both `useContext(KansokuContext)` and `useKansoku()`.
+Assert that the context is non-null, its client is the hook result, and that client is opted
+out via `isOptedOut()`. This distinguishes provider context from the hook's no-provider
+server fallback. In a second render, pass a caller-owned client created with
+`createNoopClient()` and assert that both the context client and `useKansoku()` return that
+exact object, with the same expected HTML. Install a throwing fetch stub and count calls
 around rendering; require zero calls. Let assertion failures produce nonzero exits.
 Print `kansoku-react package-smoke: <mode> ok` only after both renders and artifact checks pass.
 
@@ -329,7 +353,9 @@ and export verification. The production definition must be in the build configur
 not merely in a task-runner invocation.
 
 M2 is accepted when the new smoke proves both provider ownership forms deliver the expected
-context and HTML with no network calls in both fresh Node modes. `just package-smoke` must
+context and HTML with no network calls in both fresh Node modes. The options-form consumer
+must observe a non-null `KansokuContext` whose client equals `useKansoku()`; an opted-out
+hook result alone can come from the server fallback and is insufficient. `just package-smoke` must
 include these checks after building, alongside the existing core smoke. The negative-control
 build must fail and the restored candidate must pass. Testing only source JSX, successful
 module imports, or a string search for the runtime is insufficient.
@@ -373,3 +399,11 @@ the distribution entry. `scripts/verify-bundle.ts` retains its existing export-v
 interface. `justfile` keeps the public recipe name `package-smoke`, now covering both
 packages. This plan has no parent-plan prerequisite beyond the current checked-in build
 and package infrastructure.
+
+
+Revision note (2026-11-07): Review against the build, provider/hooks, ADR-5/6/7, and CI
+confirmed the proposed JSX fix, including in-memory probes under all three build environments
+and reproduction of the current production TypeError. Corrected the unsupported claim that
+Bun specializes usePageView's optional-chain check and strengthened the options-form smoke
+to prove real context delivery. Implementation milestones remain uncompleted; these review
+probes do not replace validation of the eventual build-script change.

@@ -22,6 +22,11 @@ provenance:
       at: 2026-10-15T04:12:18Z
       mode: "implement"
       note: "Prepare package artifacts, size checks, lockstep release and adoption docs; publish remains approval-gated"
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-11-07T19:59:22Z
+      mode: "implement"
+      note: "Register kansoku-react trusted publisher through interactive npm authentication and record confirmation."
 ---
 
 # Release engineering: package checks, size budget, docs, and trusted publishing
@@ -103,6 +108,14 @@ allows reusing a version number).
     interactively with account 2FA, `npm trust github <pkg> --file release.yml --repo
     shinzui/kansoku-ts --allow-publish` for both packages (dry run verified), then merge the
     Version Packages PR within 2 days.
+  - (2026-11-07) Registered the kansoku-react trusted publisher after browser login and
+    account 2FA using npm 11.21.2. npm confirmed configuration
+    `e6a44dab-5df1-4f42-8a2e-7e364c67ddc2`: GitHub Actions, repository
+    `shinzui/kansoku-ts`, workflow `release.yml`, no environment, permissions
+    `publish, stage publish`. No package was published. The maintainer reports completing
+    the other registration in the browser; kansoku-js's configuration still needs explicit
+    confirmation before item 5 and M4 are marked complete. The first automatic release's
+    provenance remains to be verified.
   - (2026-11-06) Cross-repository handoff list recorded in Outcomes & Retrospective.
 
 
@@ -183,7 +196,11 @@ Changesets Action latest is v2.1.2 and its inputs differ from the plan’s v1 sk
 
 ## Outcomes & Retrospective
 
-Both packages pass publint and attw packed checks, publish dry runs, a broken-export negative probe, and installation/import from tarballs in a scratch consumer (npm installed the tarballs; both Bun and Node imported them). Changesets lists both packages for 0.1.0 from the fixed group. Guides and package references are registered in Mori. Durable context is covered by ADR-1 (contracts), ADR-2 (delivery/lifecycle), ADR-3 (identity/session), ADR-6 (two packages/ESM) and ADR-7 (lockstep/trusted publishing), plus capture and React boundary ADRs. Both packages are licensed MIT (2026-11-06) and the GitHub repository is public, so automatic provenance applies. `kansoku-js@0.1.0` and `kansoku-react@0.1.0` were bootstrap-published on 2026-11-06 and verified from clean npm and Bun consumers: the scratch smoke prints `0.1.0 function function` and Node 22.23.3 `require('kansoku-js')` prints `0.1.0`. Only trusted-publisher registration remains (Progress, M4 item 5).
+Both packages pass publint and attw packed checks, publish dry runs, a broken-export negative probe, and installation/import from tarballs in a scratch consumer (npm installed the tarballs; both Bun and Node imported them). Changesets lists both packages for 0.1.0 from the fixed group. Guides and package references are registered in Mori. Durable context is covered by ADR-1 (contracts), ADR-2 (delivery/lifecycle), ADR-3 (identity/session), ADR-6 (two packages/ESM) and ADR-7 (lockstep/trusted publishing), plus capture and React boundary ADRs. Both packages are licensed MIT (2026-11-06) and the GitHub repository is public, so automatic provenance applies. `kansoku-js@0.1.0` and `kansoku-react@0.1.0` were bootstrap-published on 2026-11-06 and verified from clean npm and Bun consumers: the scratch smoke prints `0.1.0 function function` and Node 22.23.3 `require('kansoku-js')` prints `0.1.0`. The kansoku-react trusted publisher was registered successfully on 2026-11-07
+(configuration `e6a44dab-5df1-4f42-8a2e-7e364c67ddc2`). Explicit confirmation of
+kansoku-js's configuration remains before closing M4 item 5; verify provenance on the first
+automatic release. Interactive npm login and a separate browser 2FA confirmation were
+required because the earlier saved granular token bypassed 2FA and could not modify trust.
 
 Cross-repository handoff list for the server maintainers of `mori://shinzui/kansoku` (its docs are not registered in Mori, so artifact-level URIs are pending; paths are project-relative). Checked against that repository at c77ebba:
 

@@ -6,13 +6,18 @@ generated:
   by: "codex-cli/gpt-6.1-sol"
   at: "2026-11-07T22:35:20Z"
 frictionId: FRIC-4
-status: logged
+status: "resolved"
 impact: detour
 kind: tooling
 origin: "mori://shinzui/kansoku-ts"
 affects: "https://github.com/DeterminateSystems/magic-nix-cache-action"
 plan: "docs/plans/6-release-engineering-package-checks-size-budget-docs-and-trusted-publishing.md"
-workaround: "Cancel the already-failed workflow during cache cleanup to make its completed diagnostic logs available."
+workaround: "Retain GitHub Actions caching with use-gha-cache enabled and use-flakehub disabled."
+resolution: "Release workflow explicitly enables GitHub caching and disables the unused FlakeHub backend; run 42425302058 finished successfully, including cache cleanup. Removing caching entirely was rejected after a slow cold validator build."
+amended:
+  - by: "codex-cli/gpt-6.1-sol"
+    at: "2026-11-07T23:30:43Z"
+    change: "Resolve cache cleanup friction with explicit backend configuration and successful end-to-end workflow evidence."
 ---
 
 # Cache cleanup delays access to failed publication logs

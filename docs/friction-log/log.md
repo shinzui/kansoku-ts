@@ -2,6 +2,8 @@
 
 ## 2026-11-07
 
+- **Update**: FRIC-4 resolved: Resolve cache cleanup friction with explicit backend configuration and successful end-to-end workflow evidence.
+- **Update**: FRIC-3 resolved: Resolve publication authorization after diagnosing missing per-package trust and observing successful GitHub publication.
 - **Addition**: FRIC-4 records detour tooling friction with https://github.com/DeterminateSystems/magic-nix-cache-action: Cache cleanup delays access to failed publication logs
 - **Addition**: FRIC-3 records detour tooling friction with https://github.com/actions/setup-node: setup-node token configuration prevents OIDC publishing
 - **Update**: FRIC-2 resolved: Resolve the release PR policy block after observing a successful Changesets workflow.

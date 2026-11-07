@@ -2,6 +2,7 @@
 
 ## 2026-11-07
 
+- **Update**: BUG-2: record released fix in 0.1.1, verified from the npm distribution in production.
 - **Update**: BUG-2: Fix production JSX compilation and add a built-provider smoke
 - **Addition**: Record BUG-2 and BUG-3 from `mori://tan/tan-ng-labs/plans/17-replace-the-portal-s-vendored-kansoku-sdk-with-the-published-npm-packages`. BUG-2: kansoku-react 0.1.0's `dist/index.js` imports `jsxDEV` from `react/jsx-dev-runtime`, which React's production build exports as undefined, so `KansokuProvider` throws `TypeError: w is not a function` under `NODE_ENV=production`. BUG-3: the same single-module bundle statically imports `createKansoku`, so importing only `KansokuContext` puts all of kansoku-js in the importer's entry chunk and stops its own `import("kansoku-js")` from splitting.
 

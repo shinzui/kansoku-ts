@@ -5,7 +5,7 @@ description: Prepare both packages as a fixed release group with tokenless publi
 docId: ADR-7
 status: Accepted
 date: 2026-10-14
-timestamp: 2026-11-07T22:19:00Z
+timestamp: 2026-11-07T23:32:45Z
 generated:
   by: process:codex
   at: 2026-10-15T04:18:00Z
@@ -62,6 +62,9 @@ automatic release before the first-publish decisions could publish an unlicensed
 
 ## Consequences
 
-Both package versions and peer compatibility move together. Release automation is prepared
-and locally reviewable but activation, license, visibility and first publish remain explicit
-maintainer actions. No published version may be overwritten.
+Both package versions and peer compatibility move together. Bootstrap publication and the
+first automatic patch release are verified. The maintainer explicitly authorizes releases;
+no published version may be overwritten. Retain GitHub Actions caching for the pinned
+validator and explicitly disable the unused FlakeHub backend in the release job: removing
+the cache forces expensive cold builds, while the configured cache completed publication
+and cleanup successfully.

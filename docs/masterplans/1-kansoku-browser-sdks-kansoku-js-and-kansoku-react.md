@@ -21,6 +21,11 @@ provenance:
       at: 2026-10-15T03:45:08Z
       mode: "implement"
       note: "Implement workspace foundation and continue child plans in dependency order"
+    - model: "gpt-6.1-sol"
+      harness: "codex-cli"
+      at: 2026-11-07T23:31:30Z
+      mode: "update"
+      note: "Complete release coordination after trusted publication of both 0.1.1 packages and clean registry-consumer verification."
 ---
 
 # Kansoku Browser SDKs: kansoku-js and kansoku-react
@@ -220,7 +225,7 @@ OpenAPI document and catalog; later refreshes are an explicit, reviewed step.
 | 3 | kansoku-js browser capture: page views, navigation, attribution, identity helpers, and experiments | docs/plans/3-kansoku-js-browser-capture-page-views-navigation-attribution-identity-helpers-and-experiments.md | EP-2 | None | Complete |
 | 4 | kansoku-react: provider, hooks, and router-agnostic page tracking | docs/plans/4-kansoku-react-provider-hooks-and-router-agnostic-page-tracking.md | EP-3 | None | Complete |
 | 5 | Examples, live contract conformance, and real-browser smoke test | docs/plans/5-examples-live-contract-conformance-and-real-browser-smoke-test.md | EP-3 (M1, M3, M4); EP-4 for M2 (React example) | EP-6 | Complete |
-| 6 | Release engineering: package checks, size budget, docs, and trusted publishing | docs/plans/6-release-engineering-package-checks-size-budget-docs-and-trusted-publishing.md | EP-1; final milestone (first publish) requires EP-5 Complete | EP-2, EP-3, EP-4 | In Progress |
+| 6 | Release engineering: package checks, size budget, docs, and trusted publishing | docs/plans/6-release-engineering-package-checks-size-budget-docs-and-trusted-publishing.md | EP-1; final milestone (first publish) requires EP-5 Complete | EP-2, EP-3, EP-4 | Complete |
 
 Status values: Not Started, In Progress, Complete, Cancelled.
 Hard Deps and Soft Deps reference other rows by their # prefix (e.g., EP-1, EP-3).
@@ -634,7 +639,14 @@ by navigating away and asserting the server-side mock received the final batch.
 
 EP-1 through EP-5 are Complete for implementation as of 2026-10-14. Both packages are functional: kansoku-js includes browser capture, identity, exposure and persistent delivery; kansoku-react includes the provider and hooks. Final local checks pass: 59 DOM/unit tests, 2 no-DOM tests, 7 native server conformance tests, 2 Chromium mock-server tests and 2 Chromium checks against real metrics. Packed exports/types, npm publish dry runs and Node/Bun tarball imports pass. Gzip bundles are 8,588 bytes and 1,764 bytes within their 10/3 KiB budgets.
 
-EP-6 is In Progress: package checks, lockstep changesets, disabled release automation, documentation and ADR distillation are prepared. Both packages are licensed MIT (2026-11-06) and the repository is public. No package was published and no release workflow was enabled. Historical pinned-server execution and the maintainer’s bootstrap/publisher steps remain release prerequisites. Remote CI follow-up is deferred at the user’s direction; it is not blocking package implementation.
+EP-6 is Complete (2026-11-07). Both packages were bootstrap-published as 0.1.0 on
+2026-11-06 with MIT licensing from the public repository. The 0.1.1 patch release then
+passed [CI](https://github.com/shinzui/kansoku-ts/actions/runs/42425302059) and
+[trusted publication](https://github.com/shinzui/kansoku-ts/actions/runs/42425302058).
+Both per-package trusted publishers are registered for release.yml. Clean npm consumers
+verified development/production React rendering, Node require, Bun imports, registry
+signatures and provenance attestations. All child plans and the integration gates below
+are complete; EP-6 records the publication evidence and completed server handoff.
 
 Cross-plan gates not represented by a single child plan:
 
@@ -854,4 +866,12 @@ and ADR content) carry the cascade. EP-3 and EP-5 had no module-format content t
 
 ## Outcomes & Retrospective
 
-Functional browser and React SDKs, runnable examples, generated contracts, local verification and release preparation are implemented. Durable context is distilled in seven ADRs. The initiative remains unfinished at release prerequisites: license choice, historical pinned-server verification, repository visibility and explicit first-publish/trusted-publisher approval. The user directed that working package behavior take priority over remote CI; no further CI waiting was used.
+Completed 2026-11-07. All six child plans and the cross-plan gates are complete.
+The browser and React SDKs, examples, generated contracts, documentation, package checks,
+size gates and release pipeline are delivered. Both packages ship under MIT; 0.1.0 was
+bootstrap-published on 2026-11-06 and 0.1.1 was published through the verified OIDC workflow
+on 2026-11-07 with provenance. A clean registry consumer passed the built React smoke in
+development and production, Node require and Bun imports; npm verified all five installed
+packages' signatures and attestations. The server documentation handoff was applied, as
+recorded in EP-6. Durable context is distilled in ADR-1 through ADR-8. Remote CI and the
+release workflow are now verified, completing the earlier deferred follow-up.

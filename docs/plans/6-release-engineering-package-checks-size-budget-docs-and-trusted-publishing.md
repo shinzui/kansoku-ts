@@ -84,7 +84,7 @@ allows reusing a version number).
   `docs/guides/delivery-and-privacy.md` exist and are registered in `mori.dhall`
   (`mori validate` passes); the lockstep-versioning ADR exists and the ADR distillation pass
   over the five MasterPlan candidates is recorded in `docs/adr/`.
-- [ ] M4: every item of the publish-preconditions checklist (Plan of Work, Milestone 4) was
+- [x] (2026-11-07; both publisher registrations confirmed; trusted 0.1.1 release and registry consumers verified) M4: every item of the publish-preconditions checklist (Plan of Work, Milestone 4) was
   confirmed with the user before any publish command ran; `kansoku-js@0.1.0` and
   `kansoku-react@0.1.0` are live on npm (`npm view` shows `0.1.0`), a scratch Bun project
   outside the repository installs both and imports them, and the cross-repository handoff list
@@ -98,7 +98,7 @@ allows reusing a version number).
     for both. Clean npm and Bun consumers outside the repository install both and import
     them under Node and Bun; `LICENSE` ships; `npm audit signatures` verifies registry
     signatures.
-  - [ ] Item 5: register trusted publishers (user `shinzui`, repository `kansoku-ts`,
+  - [x] (2026-11-07) Item 5: register trusted publishers (user `shinzui`, repository `kansoku-ts`,
     workflow `release.yml`, no environment) for both packages, then set
     `KANSOKU_RELEASE_ENABLED=true`.
   - (2026-11-06) `KANSOKU_RELEASE_ENABLED=true` set; with no pending changeset the release job
@@ -113,9 +113,8 @@ allows reusing a version number).
     `e6a44dab-5df1-4f42-8a2e-7e364c67ddc2`: GitHub Actions, repository
     `shinzui/kansoku-ts`, workflow `release.yml`, no environment, permissions
     `publish, stage publish`. No package was published. The maintainer reports completing
-    the other registration in the browser; kansoku-js's configuration still needs explicit
-    confirmation before item 5 and M4 are marked complete. The first automatic release's
-    provenance remains to be verified.
+    the other registration in the browser; kansoku-js was still unverified at this checkpoint.
+    The registration and provenance checks were subsequently completed below.
   - (2026-11-07) Browser 2FA inspection confirmed kansoku-js had no trust configuration.
     Registered it successfully as `072a65d3-f2f0-4137-b50e-4006e4248d7e`: GitHub Actions,
     repository `shinzui/kansoku-ts`, workflow `release.yml`, no environment, permissions
@@ -227,34 +226,37 @@ Changesets Action latest is v2.1.2 and its inputs differ from the plan’s v1 sk
 
 ## Outcomes & Retrospective
 
-Release attempt (2026-11-07): The maintainer authorized the 0.1.1 patch release. Changesets
-opened [PR 1](https://github.com/shinzui/kansoku-ts/pull/1) after the repository's Actions
-PR-creation setting was enabled; the version PR was reviewed and merged as d672454.
-[CI on the workflow repair](https://github.com/shinzui/kansoku-ts/actions/runs/42420522495)
-passed. Both publication attempts (runs 42420176998 and 42420522505) failed on kansoku-js
-authorization before either 0.1.1 package was published. Removing setup-node's placeholder
-token configuration was insufficient; npm 11.21.2 is confirmed in the publication shell.
+Completed 2026-11-07. Both packages were bootstrap-published as 0.1.0 on 2026-11-06.
+The maintainer then authorized the 0.1.1 patch release. Changesets created
+[version PR 1](https://github.com/shinzui/kansoku-ts/pull/1), which was reviewed and merged
+as d672454. Both per-package trusted publishers now target shinzui/kansoku-ts,
+release.yml, with no environment and direct publication enabled.
 
-[Diagnostic run 42420863425](https://github.com/shinzui/kansoku-ts/actions/runs/42420863425)
-passed just ci but failed publication; its redacted OIDC diagnostic step completed.
-Cache cleanup then stalled and cancellation, followed by force cancellation, was requested
-to retrieve its logs. npm's interactive kansoku-js trust inspection required browser 2FA;
-the requests expired without completing. Resume by retrieving the diagnostic run's logs,
-authenticating a fresh `npm trust list kansoku-js` request, correcting the publisher
-configuration if needed, and rerunning release.yml at master. Both manifests are already
-0.1.1; do not bump or republish a version without first rechecking npm. Finish with registry
-consumer rendering, signature/provenance verification, and M4/parent status updates.
+[Release run 42425302058](https://github.com/shinzui/kansoku-ts/actions/runs/42425302058)
+and [CI run 42425302059](https://github.com/shinzui/kansoku-ts/actions/runs/42425302059)
+both passed on a1ad558. The release published kansoku-js@0.1.1 and kansoku-react@0.1.1
+through OIDC and created both GitHub releases. Registry metadata reports latest 0.1.1
+for both packages and SLSA provenance attestations. A clean directory outside this
+repository installed the exact named versions from npm. The built-provider smoke passed
+under both Node environment modes with correct context, HTML and zero fetches. Node
+require returned 0.1.1; Bun imports printed `0.1.1 function function`.
+npm 11.21.2 `audit signatures` verified registry signatures and attestations for all
+five installed packages. No pending release work remains under this plan.
 
-FRIC-2 in docs/friction-log/ is resolved by the observed successful PR-creation run.
-FRIC-3 remains logged because removing token configuration did not resolve npm authorization.
-FRIC-4 remains logged because post-action cache cleanup delayed diagnostics; no cache fix
-has been claimed. M4 remains incomplete.
+Durable context is covered by ADR-1 (contracts), ADR-2 (delivery/lifecycle), ADR-3
+(identity/session), ADR-4 (capture), ADR-5 (React boundary), ADR-6 (distribution),
+ADR-7 (lockstep/trusted publishing) and ADR-8 (server coordination). ADR-7 now records
+the repository PR permission, per-package publisher registration and publication runtime.
+The prior incomplete-release handoff has been fulfilled. The below server handoff was
+already applied on 2026-11-06.
 
-Both packages pass publint and attw packed checks, publish dry runs, a broken-export negative probe, and installation/import from tarballs in a scratch consumer (npm installed the tarballs; both Bun and Node imported them). Changesets lists both packages for 0.1.0 from the fixed group. Guides and package references are registered in Mori. Durable context is covered by ADR-1 (contracts), ADR-2 (delivery/lifecycle), ADR-3 (identity/session), ADR-6 (two packages/ESM) and ADR-7 (lockstep/trusted publishing), plus capture and React boundary ADRs. Both packages are licensed MIT (2026-11-06) and the GitHub repository is public, so automatic provenance applies. `kansoku-js@0.1.0` and `kansoku-react@0.1.0` were bootstrap-published on 2026-11-06 and verified from clean npm and Bun consumers: the scratch smoke prints `0.1.0 function function` and Node 22.23.3 `require('kansoku-js')` prints `0.1.0`. The kansoku-react trusted publisher was registered successfully on 2026-11-07
-(configuration `e6a44dab-5df1-4f42-8a2e-7e364c67ddc2`). Explicit confirmation of
-kansoku-js's configuration remains before closing M4 item 5; verify provenance on the first
-automatic release. Interactive npm login and a separate browser 2FA confirmation were
-required because the earlier saved granular token bypassed 2FA and could not modify trust.
+FRIC-2 in docs/friction-log/ is resolved: enabling Actions PR creation allowed the
+versioning workflow to open PR 1. FRIC-3 is resolved: authenticated inspection found
+the missing kansoku-js trust configuration, which was registered; its initial title's
+token-configuration theory was not confirmed as the root cause. FRIC-4 is resolved:
+explicit GitHub caching with the unused FlakeHub backend disabled completed the final
+release and cleanup successfully. Removing caching entirely was rejected after the
+runner began rebuilding validator dependencies for over ten minutes.
 
 Cross-repository handoff list for the server maintainers of `mori://shinzui/kansoku` (its docs are not registered in Mori, so artifact-level URIs are pending; paths are project-relative). Checked against that repository at c77ebba:
 
